@@ -58,6 +58,8 @@ const themePresetPitchBlack = 'pitch_black';
 const optionThemeTrueBlack = 'theme.true_black';
 const optionThemeTrueBlackTweetCards = 'theme.true_black_tweet_cards';
 const optionShowNavigationLabels = 'theme.show_navigation_labels';
+/// Flare/TweetDeck-style multi-column layout for desktop home tabs.
+const optionDeckMode = 'theme.deck_mode';
 const optionUseAbsoluteTimestamp = "option.absolute_timestamp";
 
 const themeColors = {

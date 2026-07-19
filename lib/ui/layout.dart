@@ -18,6 +18,9 @@ const double quiSidePanelWidth = 320;
 /// Rail width matches Flare’s ~72dp icon strip.
 const double quiNavRailWidth = 72;
 
+/// Width of one deck column (Flare uses ~360; slightly roomier for Qui cards).
+const double quiDeckColumnWidth = 380;
+
 bool isCompactLayout(BuildContext context) =>
     MediaQuery.sizeOf(context).width < QuiBreakpoints.compact;
 

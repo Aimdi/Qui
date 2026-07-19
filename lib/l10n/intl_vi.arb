@@ -736,5 +736,9 @@
   "zen_mode_page_cap": "Độ dài bảng tin ở chế độ zen",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "Số trang bảng tin tải ở chế độ zen trước khi tạm dừng.",
-  "@zen_mode_page_cap_description": {}
+  "@zen_mode_page_cap_description": {},
+  "deck_mode": "Chế độ deck",
+  "@deck_mode": {},
+  "deck_mode_description": "Hiển thị các tab trang chủ thành các cột cạnh nhau trên cửa sổ rộng (kiểu TweetDeck / Flare).",
+  "@deck_mode_description": {}
 }

@@ -114,34 +114,66 @@ class _GroupFeedShellState extends State<GroupFeedShell> with AutomaticKeepAlive
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final prefs = PrefService.of(context);
+    final deckMode = useDesktopShell(context) && prefs.get(optionDeckMode) == true;
+    final actions = widget.actionsBuilder(context);
+
     return Provider<GroupModel>.value(
       value: _groupModel,
       builder: (context, child) {
         return Provider<FeedRefreshController>.value(
           value: _feedRefreshController,
-          child: NestedScrollView(
-            controller: widget.scrollController,
-            floatHeaderSlivers: true,
-            headerSliverBuilder: (context, innerBoxIsScrolled) {
-              return [
-                SliverAppBar(
-                  // Flare-like sticky header: sits flush on desktop, floats on compact.
-                  backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
-                  surfaceTintColor: Colors.transparent,
-                  pinned: useDesktopShell(context),
-                  snap: !useDesktopShell(context),
-                  floating: !useDesktopShell(context),
-                  centerTitle: false,
-                  title: widget.titleBuilder(context),
-                  actions: widget.actionsBuilder(context),
+          // Deck columns already show a title strip — only keep action icons.
+          child: deckMode
+              ? Column(
+                  children: [
+                    if (actions.isNotEmpty)
+                      Material(
+                        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+                        child: SizedBox(
+                          height: 40,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: actions,
+                          ),
+                        ),
+                      ),
+                    Expanded(
+                      // Feeds attach to PrimaryScrollController (normally from
+                      // NestedScrollView). Wire the shell controller in deck mode.
+                      child: PrimaryScrollController(
+                        controller: widget.scrollController,
+                        child: KeyedSubtree(
+                          key: ValueKey(_refreshCounter),
+                          child: widget.bodyBuilder(context),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : NestedScrollView(
+                  controller: widget.scrollController,
+                  floatHeaderSlivers: true,
+                  headerSliverBuilder: (context, innerBoxIsScrolled) {
+                    return [
+                      SliverAppBar(
+                        backgroundColor:
+                            Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+                        surfaceTintColor: Colors.transparent,
+                        pinned: useDesktopShell(context),
+                        snap: !useDesktopShell(context),
+                        floating: !useDesktopShell(context),
+                        centerTitle: false,
+                        title: widget.titleBuilder(context),
+                        actions: actions,
+                      ),
+                    ];
+                  },
+                  body: KeyedSubtree(
+                    key: ValueKey(_refreshCounter),
+                    child: widget.bodyBuilder(context),
+                  ),
                 ),
-              ];
-            },
-            body: KeyedSubtree(
-              key: ValueKey(_refreshCounter),
-              child: widget.bodyBuilder(context),
-            ),
-          ),
         );
       },
     );

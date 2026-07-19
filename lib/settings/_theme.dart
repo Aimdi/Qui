@@ -68,6 +68,11 @@ class SettingsThemeFragment extends StatelessWidget {
             title: Text(L10n.of(context).show_navigation_labels),
             pref: optionShowNavigationLabels,
           ),
+          PrefSwitch(
+            title: Text(L10n.of(context).deck_mode),
+            subtitle: Text(L10n.of(context).deck_mode_description),
+            pref: optionDeckMode,
+          ),
         ]),
       ),
     );

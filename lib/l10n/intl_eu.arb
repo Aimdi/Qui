@@ -736,5 +736,9 @@
   "zen_mode_page_cap": "Jarioaren luzera zen moduan",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "Zenbat orrialde kargatzen dituen jarioak zen moduan gelditu aurretik.",
-  "@zen_mode_page_cap_description": {}
+  "@zen_mode_page_cap_description": {},
+  "deck_mode": "Deck mode",
+  "@deck_mode": {},
+  "deck_mode_description": "Show home tabs as side-by-side columns on wide windows (TweetDeck / Flare style).",
+  "@deck_mode_description": {}
 }

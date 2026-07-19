@@ -736,5 +736,9 @@
   "zen_mode_page_cap": "젠 모드 피드 길이",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "젠 모드에서 피드가 일시 중지되기 전에 불러올 페이지 수입니다.",
-  "@zen_mode_page_cap_description": {}
+  "@zen_mode_page_cap_description": {},
+  "deck_mode": "덱 모드",
+  "@deck_mode": {},
+  "deck_mode_description": "넓은 창에서 홈 탭을 나란히 열로 표시합니다 (TweetDeck / Flare 스타일).",
+  "@deck_mode_description": {}
 }

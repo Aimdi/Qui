@@ -6,6 +6,7 @@ import 'package:qui/home/home_screen.dart';
 import 'package:qui/search/search.dart';
 import 'package:qui/trends/_list.dart';
 import 'package:qui/ui/layout.dart';
+import 'package:qui/ui/deck.dart';
 
 /// Flare-inspired adaptive chrome for Qui.
 ///
@@ -39,6 +40,9 @@ class _QuiShellState extends State<QuiShell> {
   final Map<int, ScrollController> _scrollControllers = {};
   final Map<int, FocusNode> _focusNodes = {};
   late final ScrollController _sideTrendsController;
+  late final ScrollController _deckScrollController;
+  final GlobalKey<DeckBodyState> _deckKey = GlobalKey<DeckBodyState>();
+  bool _deckMode = false;
 
   void unfocusOtherPages() {
     _focusNodes.forEach((index, focusNode) {
@@ -48,12 +52,23 @@ class _QuiShellState extends State<QuiShell> {
     });
   }
 
+  void _onDeckModePref() {
+    if (!mounted) return;
+    final enabled = widget.prefs.get(optionDeckMode) == true;
+    if (enabled != _deckMode) {
+      setState(() => _deckMode = enabled);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _currentPage = widget.initialPage;
     _pageController = PageController(initialPage: widget.initialPage);
     _sideTrendsController = ScrollController();
+    _deckScrollController = ScrollController();
+    _deckMode = widget.prefs.get(optionDeckMode) == true;
+    widget.prefs.addKeyListener(optionDeckMode, _onDeckModePref);
     _ensureControllers(widget.pages.length);
   }
 
@@ -101,7 +116,9 @@ class _QuiShellState extends State<QuiShell> {
     }
     unfocusOtherPages();
     setState(() => _currentPage = index);
-    if (_pageController.hasClients) {
+    if (_deckMode && useDesktopShell(context)) {
+      _deckKey.currentState?.scrollToIndex(index);
+    } else if (_pageController.hasClients) {
       _pageController.jumpToPage(index);
     }
   }
@@ -144,6 +161,9 @@ class _QuiShellState extends State<QuiShell> {
       pageController: _pageController,
       pageChildren: pages,
       sideTrendsController: _sideTrendsController,
+      deckScrollController: _deckScrollController,
+      deckKey: _deckKey,
+      deckMode: _deckMode,
       onPageChanged: (page) => setState(() => _currentPage = page),
       onDestinationSelected: _selectPage,
       onSearch: _openSearch,
@@ -153,8 +173,10 @@ class _QuiShellState extends State<QuiShell> {
 
   @override
   void dispose() {
+    widget.prefs.removeKeyListener(optionDeckMode, _onDeckModePref);
     _pageController.dispose();
     _sideTrendsController.dispose();
+    _deckScrollController.dispose();
     for (final c in _scrollControllers.values) {
       c.dispose();
     }
@@ -252,6 +274,9 @@ class _DesktopShell extends StatelessWidget {
   final PageController pageController;
   final List<Widget> pageChildren;
   final ScrollController sideTrendsController;
+  final ScrollController deckScrollController;
+  final GlobalKey<DeckBodyState> deckKey;
+  final bool deckMode;
   final ValueChanged<int> onPageChanged;
   final Future<void> Function(int) onDestinationSelected;
   final VoidCallback onSearch;
@@ -264,6 +289,9 @@ class _DesktopShell extends StatelessWidget {
     required this.pageController,
     required this.pageChildren,
     required this.sideTrendsController,
+    required this.deckScrollController,
+    required this.deckKey,
+    required this.deckMode,
     required this.onPageChanged,
     required this.onDestinationSelected,
     required this.onSearch,
@@ -276,7 +304,9 @@ class _DesktopShell extends StatelessWidget {
     final scheme = theme.colorScheme;
     final showLabels = prefs.get(optionShowNavigationLabels) == true;
     final safeIndex = pages.isEmpty ? 0 : currentPage.clamp(0, pages.length - 1);
-    final showSidePanel = isExpandedLayout(context) &&
+    // Side trends panel only in single-column desktop mode on the home feed.
+    final showSidePanel = !deckMode &&
+        isExpandedLayout(context) &&
         pages.isNotEmpty &&
         pages[safeIndex].id == 'feed';
 
@@ -347,6 +377,15 @@ class _DesktopShell extends StatelessWidget {
                       onTap: onSearch,
                     ),
                     _RailDestination(
+                      selected: deckMode,
+                      icon: Icon(deckMode ? Icons.view_column_rounded : Icons.view_column_outlined),
+                      label: showLabels ? L10n.of(context).deck_mode : null,
+                      tooltip: L10n.of(context).deck_mode,
+                      onTap: () {
+                        prefs.set(optionDeckMode, !deckMode);
+                      },
+                    ),
+                    _RailDestination(
                       selected: false,
                       icon: const Icon(Icons.settings_outlined),
                       label: showLabels ? L10n.of(context).settings : null,
@@ -367,15 +406,24 @@ class _DesktopShell extends StatelessWidget {
           Expanded(
             child: ColoredBox(
               color: scheme.surface,
-              child: ContentFrame(
-                maxWidth: showSidePanel ? quiTimelineMaxWidth + 16 : quiTimelineMaxWidth + 40,
-                child: PageView(
-                  controller: pageController,
-                  onPageChanged: onPageChanged,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: pageChildren,
-                ),
-              ),
+              child: deckMode
+                  ? DeckBody(
+                      key: deckKey,
+                      pages: pages,
+                      children: pageChildren,
+                      focusedIndex: safeIndex,
+                      scrollController: deckScrollController,
+                      onFocusChanged: onPageChanged,
+                    )
+                  : ContentFrame(
+                      maxWidth: showSidePanel ? quiTimelineMaxWidth + 16 : quiTimelineMaxWidth + 40,
+                      child: PageView(
+                        controller: pageController,
+                        onPageChanged: onPageChanged,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: pageChildren,
+                      ),
+                    ),
             ),
           ),
           if (showSidePanel) ...[

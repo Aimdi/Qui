@@ -736,5 +736,9 @@
   "zen_mode_page_cap": "Lunghezza del feed in modalità zen",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "Quante pagine carica il feed in modalità zen prima di fermarsi.",
-  "@zen_mode_page_cap_description": {}
+  "@zen_mode_page_cap_description": {},
+  "deck_mode": "Modalità deck",
+  "@deck_mode": {},
+  "deck_mode_description": "Mostra le schede home in colonne affiancate su finestre ampie (stile TweetDeck / Flare).",
+  "@deck_mode_description": {}
 }

@@ -42,6 +42,7 @@ but presents it with a desktop chrome closer to [Flare](https://github.com/Dimen
 - **Centered timeline** column (~640px)
 - **Trends side panel** on wide windows
 - Flat post cards with hairline dividers (compact still uses mobile cards)
+- **Deck mode** — side-by-side columns for each home tab (TweetDeck / Flare style); toggle from the rail or Settings → Theme
 
 Qui is **not** a multi-network client — Mastodon/Bluesky/RSS live in Flare; Qui stays an X client.
 

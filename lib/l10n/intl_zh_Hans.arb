@@ -736,5 +736,9 @@
   "zen_mode_page_cap": "禅模式信息流长度",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "禅模式下信息流暂停前加载的页数。",
-  "@zen_mode_page_cap_description": {}
+  "@zen_mode_page_cap_description": {},
+  "deck_mode": "多栏模式",
+  "@deck_mode": {},
+  "deck_mode_description": "在宽屏上将主页标签显示为并排多栏（TweetDeck / Flare 风格）。",
+  "@deck_mode_description": {}
 }
