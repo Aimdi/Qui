@@ -32,6 +32,19 @@ Qui is forked from [Aimdi/QuaX-fix](https://github.com/Aimdi/QuaX-fix) (itself a
 - Saved posts / folders, broken-subscription cleanup
 - Themes: seed-color, True Black, Fairy Forest, Pitch Black
 
+
+## Desktop shell (Flare-inspired)
+
+Qui keeps the **QuaX-fix / X-only core** (local subscriptions, groups, reverse-engineered API)
+but presents it with a desktop chrome closer to [Flare](https://github.com/DimensionDev/Flare):
+
+- Left **icon rail** (Home, Subscriptions, Trending, Saved + Search / Settings)
+- **Centered timeline** column (~640px)
+- **Trends side panel** on wide windows
+- Flat post cards with hairline dividers (compact still uses mobile cards)
+
+Qui is **not** a multi-network client — Mastodon/Bluesky/RSS live in Flare; Qui stays an X client.
+
 ## Platforms
 
 | | Linux | Windows | macOS | Android |

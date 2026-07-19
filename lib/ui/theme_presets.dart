@@ -28,6 +28,9 @@ ThemeData fairyForestTheme(PageTransitionsTheme? pageTransitions) {
     scaffoldBackgroundColor: paper,
     appBarTheme: const AppBarThemeData(backgroundColor: paper),
     navigationBarTheme: const NavigationBarThemeData(backgroundColor: paperCard),
+    navigationRailTheme: const NavigationRailThemeData(backgroundColor: paperCard),
+    cardTheme: const CardThemeData(elevation: 0, margin: EdgeInsets.zero),
+    dividerTheme: DividerThemeData(color: forest.withValues(alpha: 0.12), thickness: 0.5, space: 0),
     pageTransitionsTheme: pageTransitions,
   );
 }
@@ -53,6 +56,9 @@ ThemeData pitchBlackTheme(PageTransitionsTheme? pageTransitions) {
     scaffoldBackgroundColor: Colors.black,
     appBarTheme: const AppBarThemeData(backgroundColor: Colors.black),
     navigationBarTheme: const NavigationBarThemeData(backgroundColor: Colors.black),
+    navigationRailTheme: const NavigationRailThemeData(backgroundColor: Color(0xFF0A0A0A)),
+    cardTheme: const CardThemeData(elevation: 0, margin: EdgeInsets.zero),
+    dividerTheme: const DividerThemeData(color: Color(0xFF222222), thickness: 0.5, space: 0),
     pageTransitionsTheme: pageTransitions,
   );
 }

@@ -11,9 +11,9 @@ import 'package:qui/home/_feed.dart';
 import 'package:qui/home/_missing.dart';
 import 'package:qui/home/_saved.dart';
 import 'package:qui/home/home_model.dart';
-import 'package:qui/search/search.dart';
 import 'package:qui/subscriptions/subscriptions.dart';
 import 'package:qui/trends/trends_screen.dart';
+import 'package:qui/ui/desktop_shell.dart';
 import 'package:qui/ui/errors.dart';
 
 typedef NavigationTitleBuilder = String Function(BuildContext context);
@@ -28,12 +28,14 @@ class NavigationPage {
 }
 
 final List<NavigationPage> defaultHomePages = [
-  NavigationPage('feed', (c) => L10n.of(c).home, const Icon(Icons.home_outlined), const Icon(Icons.home)),
-  NavigationPage('subscriptions', (c) => L10n.of(c).subscriptions, const Icon(Icons.people_outlined),
-      const Icon(Icons.people)),
-  NavigationPage('trending', (c) => L10n.of(c).search, const Icon(Icons.search_outlined), const Icon(Icons.search)),
+  // Icons lean toward Flare’s solid rail feel (outline when idle, filled when selected).
+  NavigationPage('feed', (c) => L10n.of(c).home, const Icon(Icons.home_outlined), const Icon(Icons.home_rounded)),
+  NavigationPage('subscriptions', (c) => L10n.of(c).subscriptions, const Icon(Icons.people_outline_rounded),
+      const Icon(Icons.people_rounded)),
   NavigationPage(
-      'saved', (c) => L10n.of(c).saved, const Icon(Icons.bookmark_border_outlined), const Icon(Icons.bookmark)),
+      'trending', (c) => L10n.of(c).trending, const Icon(Icons.tag_outlined), const Icon(Icons.tag_rounded)),
+  NavigationPage(
+      'saved', (c) => L10n.of(c).saved, const Icon(Icons.bookmark_border_rounded), const Icon(Icons.bookmark_rounded)),
 ];
 
 class HomeScreen extends StatelessWidget {
@@ -97,7 +99,7 @@ class _HomeScreenState extends State<_HomeScreen> {
       ),
       onLoading: (_) => const Center(child: CircularProgressIndicator()),
       onState: (_, state) {
-        return ScaffoldWithBottomNavigation(
+        return QuiShell(
           pages: _pages,
           prefs: widget.prefs,
           initialPage: _initialPage,
@@ -139,155 +141,5 @@ class _HomeScreenState extends State<_HomeScreen> {
         );
       },
     );
-  }
-}
-
-class ScaffoldWithBottomNavigation extends StatefulWidget {
-  final List<NavigationPage> pages;
-  final BasePrefService prefs;
-  final int initialPage;
-  final List<Widget> Function(Map<int, ScrollController> scrollControllers, Map<int, FocusNode> focusNodes) builder; // changed here
-
-  const ScaffoldWithBottomNavigation(
-      {super.key, required this.pages, required this.prefs, required this.initialPage, required this.builder});
-
-  @override
-  State<ScaffoldWithBottomNavigation> createState() => _ScaffoldWithBottomNavigationState();
-}
-
-class _ScaffoldWithBottomNavigationState extends State<ScaffoldWithBottomNavigation> {
-  late PageController _pageController;
-  late int _currentPage;
-  final Map<int, ScrollController> _scrollControllers = {};
-  final Map<int, FocusNode> _focusNodes = {};
-
-  void unfocusOtherPages(){
-    _focusNodes.forEach((index, focusNode) {
-      if(index != _currentPage) {
-        focusNode.unfocus();
-      }
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _currentPage = widget.initialPage;
-    _pageController = PageController(initialPage: widget.initialPage);
-    for (int i = 0; i < widget.pages.length; i++) {
-      _scrollControllers[i] = ScrollController();
-      _focusNodes[i] = FocusNode();
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant ScaffoldWithBottomNavigation oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.pages.length != oldWidget.pages.length) {
-      // Dispose controllers that are no longer needed.
-      _scrollControllers.keys.where((k) => k >= widget.pages.length).toList().forEach((k) {
-        _scrollControllers[k]?.dispose();
-        _scrollControllers.remove(k);
-      });
-      // Create controllers for new pages.
-      for (int i = 0; i < widget.pages.length; i++) {
-        if (!_scrollControllers.containsKey(i)) {
-          _scrollControllers[i] = ScrollController();
-        }
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = L10n.of(context);
-
-    return Scaffold(
-      drawer: Drawer(
-        child: ListView(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.search),
-              title: Text(l10n.search),
-              onTap: () =>
-                  Navigator.pushNamed(context, routeSearch, arguments: SearchArguments(0, focusInputOnOpen: true)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: Text(l10n.settings),
-              onTap: () => Navigator.pushNamed(context, routeSettings),
-            )
-          ],
-        ),
-      ),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (page) {
-          setState(() {
-            _currentPage = page;
-          });
-        },
-        children: widget.builder(_scrollControllers, _focusNodes),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentPage,
-        labelBehavior: widget.prefs.get(optionShowNavigationLabels)
-            ? NavigationDestinationLabelBehavior.alwaysShow
-            : NavigationDestinationLabelBehavior.alwaysHide,
-        shadowColor: Colors.transparent,
-        backgroundColor: Colors.transparent,
-        indicatorColor: Colors.transparent,
-        height: 64,
-        destinations: widget.pages.asMap().entries
-            .map(
-              (e) {
-                final index = e.key;
-                final page = e.value;
-                final isSelected = _currentPage == index;
-                final scale = widget.prefs.get(optionShowNavigationLabels) ? 1.0 : (isSelected ? 1.2 : 1.2);
-                return NavigationDestination(
-                  icon: AnimatedScale(
-                    scale: scale,
-                    duration: const Duration(milliseconds: 0),
-                    curve: Curves.easeOut,
-                    child: page.icon,
-                  ),
-                  selectedIcon: AnimatedScale(
-                    scale: scale,
-                    duration: const Duration(milliseconds: 0),
-                    curve: Curves.easeOut,
-                    child: page.selectedIcon,
-                  ),
-                  label: page.titleBuilder(context),
-                );
-              })
-            .toList(),
-        onDestinationSelected: (index) async {
-          if (index == _currentPage) {
-            final tappedId = widget.pages[index].id;
-            if (tappedId == "feed" || tappedId.startsWith("group-")) {
-              final scrollController = _scrollControllers[_currentPage];
-              if (scrollController != null) {
-                await scrollController.animateTo(0, duration: const Duration(seconds: 1), curve: Curves.easeInOut);
-              }
-            }
-            if (tappedId == "trending") {
-              _focusNodes[_currentPage]!.requestFocus();
-            }
-          }
-          unfocusOtherPages();
-          _pageController.jumpToPage(index);
-        },
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    for (final controller in _scrollControllers.values) {
-      controller.dispose();
-    }
-    super.dispose();
   }
 }

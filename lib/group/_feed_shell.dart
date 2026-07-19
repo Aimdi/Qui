@@ -9,6 +9,7 @@ import 'package:qui/group/_settings.dart';
 import 'package:qui/group/feed_refresh_controller.dart';
 import 'package:qui/group/group_model.dart';
 import 'package:qui/subscriptions/users_model.dart';
+import 'package:qui/ui/layout.dart';
 
 class GroupFeedShell extends StatefulWidget {
   final ScrollController scrollController;
@@ -124,10 +125,13 @@ class _GroupFeedShellState extends State<GroupFeedShell> with AutomaticKeepAlive
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return [
                 SliverAppBar(
-                  backgroundColor: Theme.of(context).colorScheme.surface,
-                  pinned: false,
-                  snap: true,
-                  floating: true,
+                  // Flare-like sticky header: sits flush on desktop, floats on compact.
+                  backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+                  surfaceTintColor: Colors.transparent,
+                  pinned: useDesktopShell(context),
+                  snap: !useDesktopShell(context),
+                  floating: !useDesktopShell(context),
+                  centerTitle: false,
                   title: widget.titleBuilder(context),
                   actions: widget.actionsBuilder(context),
                 ),
@@ -171,11 +175,14 @@ List<Widget> defaultGroupActions(
           }),
     if (showRefresh)
       IconButton(
-          icon: const Icon(Icons.refresh),
+          icon: const Icon(Icons.refresh_rounded),
+          tooltip: 'Refresh',
           onPressed: onRefresh ?? () async => await context.read<FeedRefreshController>().refresh()),
-    if (showSettings)
+    // Settings lives on the desktop rail; keep the AppBar action on compact only.
+    if (showSettings && !useDesktopShell(context))
       IconButton(
-          icon: const Icon(Icons.settings), onPressed: () => Navigator.pushNamed(context, routeSettings)),
+          icon: const Icon(Icons.settings_outlined),
+          onPressed: () => Navigator.pushNamed(context, routeSettings)),
     ...extra,
   ];
 }

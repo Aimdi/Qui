@@ -30,6 +30,7 @@ import 'package:qui/user.dart';
 import 'package:qui/utils/rich_text.dart';
 import 'package:qui/utils/translation.dart';
 import 'package:qui/utils/urls.dart';
+import 'package:qui/ui/layout.dart';
 import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
 import 'package:pref/pref.dart';
@@ -976,34 +977,51 @@ class TweetTileState extends State<TweetTile> with SingleTickerProviderStateMixi
               )));
     }
 
+    final desktop = useDesktopShell(context);
+    final cardColor = tweetCardColor(context);
+    final body = Row(
+      children: [
+        retweetSidebar,
+        Expanded(
+            child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            retweetBanner,
+            replyToTile,
+            ?pinnedBadge,
+            ?threadBadge,
+            headerTile,
+            ...bodyChildren,
+          ],
+        ))
+      ],
+    );
+
+    // Flare desktop timelines prefer flat “plain” posts with hairline dividers
+    // over elevated mobile cards. Compact keeps the classic Card chrome.
+    final post = desktop
+        ? Material(
+            color: cardColor ?? theme.colorScheme.surface,
+            child: body,
+          )
+        : Card(
+            color: cardColor,
+            elevation: 0,
+            margin: EdgeInsets.zero,
+            child: body,
+          );
+
     return Consumer<ImportDataModel>(
         builder: (context, model, child) => RepaintBoundary(
             key: _globalKey,
             child: Column(children: [
-              Card(
-                color: tweetCardColor(context),
-                child: Row(
-                  children: [
-                    retweetSidebar,
-                    Expanded(
-                        child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        retweetBanner,
-                        replyToTile,
-                        ?pinnedBadge,
-                        ?threadBadge,
-                        headerTile,
-                        ...bodyChildren,
-                      ],
-                    ))
-                  ],
-                ),
-              ),
+              post,
               Divider(
                 height: 0,
-                thickness: 1,
-                color: addSeparator ? theme.colorScheme.surfaceBright.withAlpha(150) : Colors.transparent,
+                thickness: desktop ? 0.5 : 1,
+                color: addSeparator
+                    ? theme.colorScheme.outlineVariant.withValues(alpha: desktop ? 0.55 : 0.85)
+                    : Colors.transparent,
               ),
             ])));
   }

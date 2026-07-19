@@ -226,9 +226,10 @@ Future<void> main() async {
 
   if (isDesktop) {
     await windowManager.ensureInitialized();
+    // Flare-like default desktop footprint: wide enough for rail + timeline + side panel.
     const windowOptions = WindowOptions(
-      size: Size(1200, 800),
-      minimumSize: Size(800, 600),
+      size: Size(1360, 860),
+      minimumSize: Size(720, 520),
       center: true,
       title: 'Qui',
     );
