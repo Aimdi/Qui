@@ -1,0 +1,3 @@
+#!/bin/sh
+# Qui desktop launcher — runs the Flutter bundle under /opt/qui
+exec /opt/qui/qui "$@"

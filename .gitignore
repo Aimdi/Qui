@@ -55,3 +55,8 @@ app.*.map.json
 .gradle/
 .venv/
 assets/icon-*.png
+# Packaging build products
+packaging/*.pkg.tar.*
+packaging/pkg/
+packaging/src/
+dist/

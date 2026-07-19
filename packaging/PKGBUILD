@@ -1,0 +1,56 @@
+# Maintainer: Aimdi
+# Arch / CachyOS package for Qui
+#
+#   flutter build linux --release
+#   cd packaging && makepkg -f
+#   sudo pacman -U qui-0.1.0-1-x86_64.pkg.tar.zst
+
+pkgname=qui
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Privacy-focused X (Twitter) client for Linux desktop (Flutter; based on QuaX-fix)"
+arch=('x86_64')
+url="https://github.com/Aimdi/Qui"
+license=('MIT')
+depends=(
+  'gtk3'
+  'glib2'
+  'mpv'
+  'xz'
+  'hicolor-icon-theme'
+)
+optdepends=(
+  'xdg-desktop-portal: file dialogs under sandboxed desktops'
+)
+options=('!strip' '!debug')
+
+# Evaluated when PKGBUILD is sourced (makepkg cwd is packaging/)
+_reporoot="$(pwd)/.."
+_bundle="$_reporoot/build/linux/x64/release/bundle"
+_pkgroot="$(pwd)"
+
+package() {
+  if [[ ! -x "$_bundle/qui" ]]; then
+    echo "error: Flutter release bundle not found at $_bundle" >&2
+    echo "Run: flutter build linux --release" >&2
+    return 1
+  fi
+
+  install -d "$pkgdir/opt/qui"
+  cp -a "$_bundle/." "$pkgdir/opt/qui/"
+  chmod 755 "$pkgdir/opt/qui/qui"
+
+  install -Dm755 "$_pkgroot/qui-launcher" "$pkgdir/usr/bin/qui"
+  install -Dm644 "$_pkgroot/io.github.aimdi.Qui.desktop" \
+    "$pkgdir/usr/share/applications/io.github.aimdi.Qui.desktop"
+
+  [[ -f "$_pkgroot/io.github.aimdi.Qui.svg" ]] && \
+    install -Dm644 "$_pkgroot/io.github.aimdi.Qui.svg" \
+      "$pkgdir/usr/share/icons/hicolor/scalable/apps/io.github.aimdi.Qui.svg"
+  [[ -f "$_pkgroot/io.github.aimdi.Qui.png" ]] && \
+    install -Dm644 "$_pkgroot/io.github.aimdi.Qui.png" \
+      "$pkgdir/usr/share/icons/hicolor/256x256/apps/io.github.aimdi.Qui.png"
+
+  install -Dm644 "$_reporoot/LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
