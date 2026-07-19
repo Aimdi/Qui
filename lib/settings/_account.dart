@@ -1,0 +1,56 @@
+import 'package:flutter/material.dart';
+import 'package:qui/client/client_regular_account.dart';
+import 'package:qui/client/login_webview.dart';
+import 'package:qui/client/desktop_login.dart';
+import 'package:qui/utils/desktop_files.dart';
+import 'package:qui/database/entities.dart';
+import 'package:qui/generated/l10n.dart';
+import 'package:qui/client/accounts.dart';
+
+class SettingsAccountFragment extends StatefulWidget {
+  const SettingsAccountFragment({super.key});
+
+  @override
+  State<SettingsAccountFragment> createState() => _SettingsAccountFragment();
+}
+
+class _SettingsAccountFragment extends State<SettingsAccountFragment> {
+  @override
+  Widget build(BuildContext context) {
+    var model = XRegularAccount();
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(L10n.current.account),
+        actions: [
+          IconButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => isDesktop ? const DesktopCookieLoginScreen() : const TwitterLoginWebview())),
+              icon: const Icon(Icons.add))
+        ],
+      ),
+      body: FutureBuilder(
+          future: getAccounts(),
+          builder: (BuildContext listContext, AsyncSnapshot snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const LinearProgressIndicator();
+            } else {
+              List<Account> data = snapshot.data;
+              return ListView.builder(
+                  itemCount: data.length,
+                  itemBuilder: (BuildContext itemContext, int index) {
+                    return Dismissible(
+                        key: widget.key!,
+                        onDismissed: (DismissDirection direction) async {
+                          await model.deleteAccount(data[index].id.toString());
+                          setState(() {});
+                        },
+                        child: Card(
+                            child: ListTile(
+                          title: Text(data[index].screenName ?? L10n.of(context).unknown_username),
+                          leading: const Icon(Icons.account_circle),
+                        )));
+                  });
+            }
+          }),
+    );
+  }
+}

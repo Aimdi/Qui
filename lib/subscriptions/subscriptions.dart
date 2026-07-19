@@ -1,0 +1,201 @@
+import 'package:flutter/material.dart';
+import 'package:qui/constants.dart';
+import 'package:qui/generated/l10n.dart';
+import 'package:qui/group/group_model.dart';
+import 'package:qui/subscriptions/_cleanup.dart';
+import 'package:qui/subscriptions/_groups.dart';
+import 'package:qui/subscriptions/_import.dart';
+import 'package:qui/subscriptions/_import_list.dart';
+import 'package:qui/subscriptions/_list.dart';
+import 'package:qui/subscriptions/users_model.dart';
+import 'package:provider/provider.dart';
+
+class SubscriptionsScreen extends StatelessWidget {
+  final ScrollController scrollController;
+
+  const SubscriptionsScreen({super.key, required this.scrollController});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(L10n.current.subscriptions),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () async {
+              Navigator.pushNamed(context, routeSettings);
+            },
+          ),
+        ],
+      ),
+      body: Scrollbar(
+        controller: scrollController,
+        interactive: true,
+        thumbVisibility: true,
+        child: CustomScrollView(
+          controller: scrollController,
+          slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(8.0),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  ExpansionTile(
+                    title: Text(
+                      L10n.of(context).groups,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    enabled: false,
+                    initiallyExpanded: true,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.add,
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          onPressed: () => openSubscriptionGroupDialog(
+                            context,
+                            null,
+                            '',
+                            defaultGroupIcon,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.playlist_add,
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          tooltip: L10n.of(context).import_list_as_group,
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ListImportScreen(),
+                            ),
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          icon: Icon(
+                            Icons.sort,
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'name',
+                              child: Text(L10n.of(context).name),
+                            ),
+                            PopupMenuItem(
+                              value: 'created_at',
+                              child: Text(L10n.of(context).date_created),
+                            ),
+                          ],
+                          onSelected: (value) => context
+                              .read<GroupsModel>()
+                              .changeOrderSubscriptionGroupsBy(value),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.sort_by_alpha,
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          onPressed: () => context
+                              .read<GroupsModel>()
+                              .toggleOrderSubscriptionGroupsAscending(),
+                        ),
+                      ],
+                    ),
+                    children: [
+                      SubscriptionGroups(scrollController: scrollController),
+                    ],
+                  ),
+                  const SizedBox(height: 8.0),
+                  ExpansionTile(
+                    title: Text(
+                      L10n.of(context).subscriptions,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    enabled: false,
+                    initiallyExpanded: true,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.cloud_download,
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SubscriptionImportScreen(),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          tooltip: L10n.of(context).find_broken_subscriptions,
+                          onPressed: () => showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (_) => const BrokenSubscriptionsDialog(),
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          icon: Icon(
+                            Icons.sort,
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'name',
+                              child: Text(L10n.of(context).name),
+                            ),
+                            PopupMenuItem(
+                              value: 'screen_name',
+                              child: Text(L10n.of(context).username),
+                            ),
+                            PopupMenuItem(
+                              value: 'created_at',
+                              child: Text(L10n.of(context).date_subscribed),
+                            ),
+                          ],
+                          onSelected: (value) => context
+                              .read<SubscriptionsModel>()
+                              .changeOrderSubscriptionsBy(value),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.sort_by_alpha,
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          onPressed: () => context
+                              .read<SubscriptionsModel>()
+                              .toggleOrderSubscriptionsAscending(),
+                        ),
+                      ],
+                    ),
+                    children: const [],
+                  ),
+                ],
+              ),
+            ),
+          ),
+            const SubscriptionUsers(),
+            SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.bottom)),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,89 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:qui/constants.dart';
+import 'package:qui/generated/l10n.dart';
+import 'package:qui/group/group_model.dart';
+import 'package:pref/pref.dart';
+
+class SettingsPostsFragment extends StatelessWidget {
+  const SettingsPostsFragment({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(L10n.current.tweets)),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: ListView(children: [
+          PrefSwitch(
+            pref: optionUseAbsoluteTimestamp,
+            title: Text(L10n.of(context).use_absolute_timestamp),
+            subtitle: Text(L10n.of(context).use_absolute_timestamp_description),
+          ),
+          PrefCheckbox(
+            title: Text(L10n.of(context).hide_sensitive_tweets),
+            subtitle: Text(L10n.of(context).whether_to_hide_tweets_marked_as_sensitive),
+            pref: optionTweetsHideSensitive,
+          ),
+          PrefSwitch(
+            title: Text(L10n.of(context).always_show_full_tweet_contents),
+            subtitle: Text(L10n.of(context).always_show_full_tweet_contents_description),
+            pref: alwaysShowFullTweetContents,
+          ),
+          PrefSwitch(
+            title: Text(L10n.of(context).activate_non_confirmation_bias_mode_label),
+            pref: optionNonConfirmationBiasMode,
+            subtitle: Text(L10n.of(context).activate_non_confirmation_bias_mode_description),
+          ),
+          PrefSwitch(
+            title: Text(L10n.of(context).disable_warnings_for_unrelated_posts_in_feed),
+            subtitle: Text(L10n.of(context).disable_warnings_for_unrelated_posts_in_feed_description),
+            pref: optionDisableWarningsForUnrelatedPostsInFeed,
+          ),
+          PrefSwitch(
+            title: Text(L10n.of(context).show_subscribe_button_on_avatars),
+            subtitle: Text(L10n.of(context).show_subscribe_button_on_avatars_description),
+            pref: optionTweetsShowSubscribeBadge,
+          ),
+          PrefSwitch(
+            title: Text(L10n.of(context).include_replies),
+            subtitle: Text(L10n.of(context).feed_default_filter_description),
+            pref: optionGlobalIncludeReplies,
+            onChange: (_) async => await context.read<GroupsModel>().clearIncludeOverrides(replies: true),
+          ),
+          PrefSwitch(
+            title: Text(L10n.of(context).include_retweets),
+            subtitle: Text(L10n.of(context).feed_default_filter_description),
+            pref: optionGlobalIncludeRetweets,
+            onChange: (_) async => await context.read<GroupsModel>().clearIncludeOverrides(replies: false),
+          ),
+          PrefSwitch(
+            title: Text(L10n.of(context).threaded_replies),
+            subtitle: Text(L10n.of(context).threaded_replies_description),
+            pref: optionThreadedReplies,
+          ),
+          PrefSwitch(
+            title: Text(L10n.of(context).zen_mode),
+            subtitle: Text(L10n.of(context).zen_mode_description),
+            pref: optionZenMode,
+          ),
+          PrefDropdown(
+            fullWidth: false,
+            title: Text(L10n.of(context).zen_mode_page_cap),
+            subtitle: Text(L10n.of(context).zen_mode_page_cap_description),
+            pref: optionZenModePageCap,
+            items: [
+              for (final pages in zenModePageCapChoices)
+                DropdownMenuItem(value: pages, child: Text('$pages')),
+            ],
+          ),
+          PrefSwitch(
+            title: Text(L10n.of(context).remember_reading_position),
+            subtitle: Text(L10n.of(context).remember_reading_position_description),
+            pref: optionFeedReadingPosition,
+          ),
+        ]),
+      ),
+    );
+  }
+}

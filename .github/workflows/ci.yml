@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+    steps:
+      - name: Clone the repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - name: Generate icons
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+          python generate_icons.py
+          deactivate
+
+      - name: Build Linux
+        run: |
+          flutter config --no-analytics --enable-linux-desktop
+          flutter pub get
+          dart run flutter_launcher_icons || true
+          dart run dart_pubspec_licenses:generate
+          dart run intl_utils:generate
+          dart run flutter_iconpicker:generate_packs --packs material
+          flutter build linux --release --no-tree-shake-icons
+
+      - name: Archive Linux bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: qui-linux
+          path: build/linux/x64/release/bundle/
+          retention-days: 7
