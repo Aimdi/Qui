@@ -39,6 +39,8 @@ import 'package:qui/settings/settings.dart';
 import 'package:qui/settings/settings_export_screen.dart';
 import 'package:qui/status.dart';
 import 'package:qui/tweet/quotes_screen.dart';
+import 'package:qui/substack/substack_article_screen.dart';
+import 'package:qui/substack/substack_model.dart';
 import 'package:qui/subscriptions/_import_list.dart';
 import 'package:qui/subscriptions/users_model.dart';
 import 'package:qui/trends/trends_model.dart';
@@ -338,6 +340,9 @@ Future<void> main() async {
 
     var trendLocationModel = UserTrendLocationModel(prefService);
 
+    var substackModel = SubstackModel();
+    await substackModel.reload();
+
     runApp(PrefService(
         service: prefService,
         child: MultiProvider(
@@ -355,6 +360,7 @@ Future<void> main() async {
             Provider(create: (context) => trendLocationModel),
             Provider(create: (context) => TrendLocationsModel()),
             Provider(create: (context) => TrendsModel(trendLocationModel)),
+            Provider(create: (context) => substackModel),
             ChangeNotifierProvider(create: (_) => VideoContextState(prefService.get(optionMediaDefaultMute))),
           ],
           child: QuiApp(),
@@ -592,6 +598,7 @@ class _QuiAppState extends State<QuiApp> {
                           routeSettingsHome: (context) => const SettingsHomeFragment(),
                           routeQuotes: (context) => const QuotesScreen(),
                           routeStatus: (context) => const StatusScreen(),
+                          routeSubstackArticle: (context) => const SubstackArticleScreen(),
                         },
                         builder: (context, child) {
                           if (_checkUpdates && !_updateDialogShown) {

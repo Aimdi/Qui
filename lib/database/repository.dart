@@ -22,6 +22,7 @@ const String tableSubscriptionGroup = 'subscription_group';
 const String tableSubscriptionGroupMember = 'subscription_group_member';
 
 const String tableAccounts = 'accounts';
+const String tableSubstackSubscription = 'substack_subscription';
 const String tablePostNotification = 'post_notification';
 const String tableRetweetFilter = 'retweet_filter';
 const String tableFeedReadPosition = 'feed_read_position';
@@ -301,11 +302,18 @@ class Repository {
         // Per-folder toggle: download a post's images when it's filed here.
         SqlMigration('ALTER TABLE $tableSavedTweetFolder ADD COLUMN auto_download BOOLEAN DEFAULT 0',
             reverseSql: 'ALTER TABLE $tableSavedTweetFolder DROP COLUMN auto_download'),
+      ],
+      34: [
+        // Substack publications the user follows; host is the publication's
+        // domain (name.substack.com or a custom domain).
+        SqlMigration(
+            'CREATE TABLE IF NOT EXISTS $tableSubstackSubscription (host VARCHAR PRIMARY KEY, name VARCHAR NOT NULL, logo_url VARCHAR, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
+            reverseSql: 'DROP TABLE $tableSubstackSubscription'),
       ]
     });
     await openDatabase(
       databaseName,
-      version: 33,
+      version: 34,
       onUpgrade: myMigrationPlan.call,
       onCreate: myMigrationPlan.call,
       onDowngrade: myMigrationPlan.call,

@@ -147,3 +147,4 @@ const routeSettingsExport = '/settings/export';
 const routeSettingsHome = '/settings/home';
 const routeQuotes = '/quotes';
 const routeStatus = '/status';
+const routeSubstackArticle = '/substack/article';
