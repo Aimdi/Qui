@@ -116,15 +116,20 @@ class _GroupFeedShellState extends State<GroupFeedShell> with AutomaticKeepAlive
     super.build(context);
     final prefs = PrefService.of(context);
     final deckMode = useDesktopShell(context) && prefs.get(optionDeckMode) == true;
-    final actions = widget.actionsBuilder(context);
 
     return Provider<GroupModel>.value(
       value: _groupModel,
       builder: (context, child) {
         return Provider<FeedRefreshController>.value(
           value: _feedRefreshController,
-          // Deck columns already show a title strip — only keep action icons.
-          child: deckMode
+          // actionsBuilder reads GroupModel and the refresh action reads
+          // FeedRefreshController, so build the actions (and body) from a
+          // context below both providers rather than the outer build context,
+          // which is their ancestor and would throw "Could not find Provider".
+          builder: (context, child) {
+            final actions = widget.actionsBuilder(context);
+            // Deck columns already show a title strip — only keep action icons.
+            return deckMode
               ? Column(
                   children: [
                     if (actions.isNotEmpty)
@@ -173,7 +178,8 @@ class _GroupFeedShellState extends State<GroupFeedShell> with AutomaticKeepAlive
                     key: ValueKey(_refreshCounter),
                     child: widget.bodyBuilder(context),
                   ),
-                ),
+                );
+          },
         );
       },
     );
