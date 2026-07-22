@@ -15,6 +15,10 @@ const double quiTimelineMaxWidth = 640;
 /// Secondary column (trends / discover) width on expanded desktops.
 const double quiSidePanelWidth = 320;
 
+/// Reading pane (master/detail thread view) width on expanded desktops. Wider
+/// than the trends column so opened threads stay comfortably readable.
+const double quiDetailPaneWidth = 460;
+
 /// Rail width matches Flare’s ~72dp icon strip.
 const double quiNavRailWidth = 72;
 

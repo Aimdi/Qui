@@ -25,6 +25,7 @@ import 'package:qui/tweet/_media.dart';
 import 'package:qui/tweet/quotes_screen.dart';
 import 'package:qui/article/article.dart';
 import 'package:qui/ui/dates.dart';
+import 'package:qui/ui/detail_pane.dart';
 import 'package:qui/ui/errors.dart';
 import 'package:qui/user.dart';
 import 'package:qui/utils/rich_text.dart';
@@ -228,8 +229,9 @@ class TweetTileState extends State<TweetTile> with SingleTickerProviderStateMixi
   }
 
   void onClickOpenTweet(TweetWithCard tweet) {
-    Navigator.pushNamed(context, routeStatus,
-        arguments: StatusScreenArguments(
+    openStatus(
+        context,
+        StatusScreenArguments(
             id: tweet.idStr!, username: tweet.user!.screenName!, tweetOpened: true, initialTweet: tweet));
   }
 
@@ -666,8 +668,7 @@ class TweetTileState extends State<TweetTile> with SingleTickerProviderStateMixi
               ),
             ));
           } else {
-            Navigator.pushNamed(context, routeStatus,
-                arguments: StatusScreenArguments(id: replyToId, username: replyTo));
+            openStatus(context, StatusScreenArguments(id: replyToId, username: replyTo));
           }
         },
         icon: Icons.reply,
@@ -765,8 +766,8 @@ class TweetTileState extends State<TweetTile> with SingleTickerProviderStateMixi
         // There always seem to be an actual link to the quoted tweet that we can display (showing username + id)
         String? msg = tweet.quotedStatusPermalink?.display ?? 'View quoted tweet'; // Just in case, add a default String
         quotedContent = GestureDetector(
-            onTap: () => Navigator.pushNamed(context, routeStatus,
-                arguments: StatusScreenArguments(id: tweet.quotedStatusIdStr!, username: null)),
+            onTap: () => openStatus(
+                context, StatusScreenArguments(id: tweet.quotedStatusIdStr!, username: null)),
             child: _buildErrorTweet(msg)
         );
       } else {
