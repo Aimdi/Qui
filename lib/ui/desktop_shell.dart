@@ -7,6 +7,7 @@ import 'package:qui/search/search.dart';
 import 'package:qui/trends/_list.dart';
 import 'package:qui/ui/layout.dart';
 import 'package:qui/ui/deck.dart';
+import 'package:qui/ui/detail_pane.dart';
 
 /// Flare-inspired adaptive chrome for Qui.
 ///
@@ -42,6 +43,7 @@ class _QuiShellState extends State<QuiShell> {
   late final ScrollController _sideTrendsController;
   late final ScrollController _deckScrollController;
   final GlobalKey<DeckBodyState> _deckKey = GlobalKey<DeckBodyState>();
+  final DetailPaneController _detailPaneController = DetailPaneController();
   bool _deckMode = false;
 
   void unfocusOtherPages() {
@@ -154,20 +156,23 @@ class _QuiShellState extends State<QuiShell> {
       );
     }
 
-    return _DesktopShell(
-      pages: widget.pages,
-      prefs: widget.prefs,
-      currentPage: _currentPage,
-      pageController: _pageController,
-      pageChildren: pages,
-      sideTrendsController: _sideTrendsController,
-      deckScrollController: _deckScrollController,
-      deckKey: _deckKey,
-      deckMode: _deckMode,
-      onPageChanged: (page) => setState(() => _currentPage = page),
-      onDestinationSelected: _selectPage,
-      onSearch: _openSearch,
-      onSettings: _openSettings,
+    return DetailPaneScope(
+      controller: _detailPaneController,
+      child: _DesktopShell(
+        pages: widget.pages,
+        prefs: widget.prefs,
+        currentPage: _currentPage,
+        pageController: _pageController,
+        pageChildren: pages,
+        sideTrendsController: _sideTrendsController,
+        deckScrollController: _deckScrollController,
+        deckKey: _deckKey,
+        deckMode: _deckMode,
+        onPageChanged: (page) => setState(() => _currentPage = page),
+        onDestinationSelected: _selectPage,
+        onSearch: _openSearch,
+        onSettings: _openSettings,
+      ),
     );
   }
 
@@ -177,6 +182,7 @@ class _QuiShellState extends State<QuiShell> {
     _pageController.dispose();
     _sideTrendsController.dispose();
     _deckScrollController.dispose();
+    _detailPaneController.dispose();
     for (final c in _scrollControllers.values) {
       c.dispose();
     }
@@ -304,11 +310,16 @@ class _DesktopShell extends StatelessWidget {
     final scheme = theme.colorScheme;
     final showLabels = prefs.get(optionShowNavigationLabels) == true;
     final safeIndex = pages.isEmpty ? 0 : currentPage.clamp(0, pages.length - 1);
-    // Side trends panel only in single-column desktop mode on the home feed.
-    final showSidePanel = !deckMode &&
+    // The right column hosts either the opened thread (master/detail reading
+    // pane) or, on the home feed with nothing selected, the trends panel.
+    final pane = DetailPaneScope.maybeOf(context);
+    final hasDetail = pane != null && pane.hasSelection;
+    final showFeedTrends = !deckMode &&
         isExpandedLayout(context) &&
         pages.isNotEmpty &&
         pages[safeIndex].id == 'feed';
+    final showRightPane =
+        !deckMode && isExpandedLayout(context) && (hasDetail || showFeedTrends);
 
     final railBg = scheme.surfaceContainerLow;
 
@@ -416,7 +427,7 @@ class _DesktopShell extends StatelessWidget {
                       onFocusChanged: onPageChanged,
                     )
                   : ContentFrame(
-                      maxWidth: showSidePanel ? quiTimelineMaxWidth + 16 : quiTimelineMaxWidth + 40,
+                      maxWidth: showRightPane ? quiTimelineMaxWidth + 16 : quiTimelineMaxWidth + 40,
                       child: PageView(
                         controller: pageController,
                         onPageChanged: onPageChanged,
@@ -426,22 +437,24 @@ class _DesktopShell extends StatelessWidget {
                     ),
             ),
           ),
-          if (showSidePanel) ...[
+          if (showRightPane) ...[
             VerticalDivider(
               width: 1,
               thickness: 1,
               color: scheme.outlineVariant.withValues(alpha: 0.45),
             ),
             SizedBox(
-              width: quiSidePanelWidth,
+              width: hasDetail ? quiDetailPaneWidth : quiSidePanelWidth,
               child: Material(
-                color: railBg,
+                color: hasDetail ? scheme.surface : railBg,
                 child: SafeArea(
                   left: false,
-                  child: _SideDiscoverPanel(
-                    onOpenSearch: onSearch,
-                    scrollController: sideTrendsController,
-                  ),
+                  child: hasDetail
+                      ? DetailPane(controller: pane)
+                      : _SideDiscoverPanel(
+                          onOpenSearch: onSearch,
+                          scrollController: sideTrendsController,
+                        ),
                 ),
               ),
             ),

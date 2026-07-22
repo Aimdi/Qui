@@ -45,18 +45,28 @@ class StatusScreenArguments {
 }
 
 class StatusScreen extends StatelessWidget {
-  const StatusScreen({super.key});
+  /// When null the arguments come from the route (the normal full-screen case);
+  /// the desktop reading pane passes them explicitly instead.
+  final StatusScreenArguments? arguments;
+
+  /// Overrides the app-bar leading widget. Route navigation leaves this null so
+  /// the default back button shows; the reading pane supplies a close/back
+  /// button that drives its own navigation stack.
+  final Widget? leading;
+
+  const StatusScreen({super.key, this.arguments, this.leading});
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)!.settings.arguments as StatusScreenArguments;
+    final args = arguments ?? ModalRoute.of(context)!.settings.arguments as StatusScreenArguments;
 
     return _StatusScreen(
         username: args.username,
         id: args.id,
         tweetOpened: args.tweetOpened,
         initialMediaIndex: args.initialMediaIndex,
-        initialTweet: args.initialTweet);
+        initialTweet: args.initialTweet,
+        leading: leading);
   }
 }
 
@@ -66,13 +76,15 @@ class _StatusScreen extends StatefulWidget {
   final bool tweetOpened;
   final int initialMediaIndex;
   final TweetWithCard? initialTweet;
+  final Widget? leading;
 
   const _StatusScreen(
       {required this.username,
       required this.id,
       required this.tweetOpened,
       this.initialMediaIndex = 0,
-      this.initialTweet});
+      this.initialTweet,
+      this.leading});
 
   @override
   _StatusScreenState createState() => _StatusScreenState();
@@ -186,7 +198,7 @@ class _StatusScreenState extends State<_StatusScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(leading: widget.leading),
       body: MultiProvider(
         providers: [
           ChangeNotifierProvider<TweetContextState>(
