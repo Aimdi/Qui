@@ -123,6 +123,14 @@
   "@date_created": {},
   "date_subscribed": "Data subskrypcji",
   "@date_subscribed": {},
+  "deck_mode": "Tryb kolumn",
+  "@deck_mode": {},
+  "deck_mode_description": "Pokazuj karty startowe jako kolumny obok siebie na szerokich oknach (styl TweetDeck / Flare).",
+  "@deck_mode_description": {},
+  "deck_rows": "Wiersze kolumn",
+  "@deck_rows": {},
+  "deck_rows_description": "Dzieli kolumny na tyle nałożonych wierszy w szerokich oknach. 1 zachowuje pojedynczy przewijany wiersz.",
+  "@deck_rows_description": {},
   "default_feed_tab": "Domyślna karta kanału",
   "@default_feed_tab": {},
   "default_feed_tab_description": "Wybierz domyślną kartę wyświetlaną w głównym kanale",
@@ -736,9 +744,5 @@
   "zen_mode_page_cap": "Długość kanału w trybie zen",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "Ile stron kanał wczytuje w trybie zen, zanim się zatrzyma.",
-  "@zen_mode_page_cap_description": {},
-  "deck_mode": "Tryb kolumn",
-  "@deck_mode": {},
-  "deck_mode_description": "Pokazuj karty startowe jako kolumny obok siebie na szerokich oknach (styl TweetDeck / Flare).",
-  "@deck_mode_description": {}
+  "@zen_mode_page_cap_description": {}
 }

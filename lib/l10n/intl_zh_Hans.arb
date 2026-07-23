@@ -123,6 +123,14 @@
   "@date_created": {},
   "date_subscribed": "订阅日期",
   "@date_subscribed": {},
+  "deck_mode": "多栏模式",
+  "@deck_mode": {},
+  "deck_mode_description": "在宽屏上将主页标签显示为并排多栏（TweetDeck / Flare 风格）。",
+  "@deck_mode_description": {},
+  "deck_rows": "多栏行数",
+  "@deck_rows": {},
+  "deck_rows_description": "在宽屏上将栏拆分为这么多堆叠的行。设为 1 时保持单行横向滚动。",
+  "@deck_rows_description": {},
   "default_feed_tab": "默认信息流标签",
   "@default_feed_tab": {},
   "default_feed_tab_description": "选择主信息流中显示的默认标签",
@@ -736,9 +744,5 @@
   "zen_mode_page_cap": "禅模式信息流长度",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "禅模式下信息流暂停前加载的页数。",
-  "@zen_mode_page_cap_description": {},
-  "deck_mode": "多栏模式",
-  "@deck_mode": {},
-  "deck_mode_description": "在宽屏上将主页标签显示为并排多栏（TweetDeck / Flare 风格）。",
-  "@deck_mode_description": {}
+  "@zen_mode_page_cap_description": {}
 }

@@ -123,6 +123,14 @@
   "@date_created": {},
   "date_subscribed": "Ngày theo dõi",
   "@date_subscribed": {},
+  "deck_mode": "Chế độ deck",
+  "@deck_mode": {},
+  "deck_mode_description": "Hiển thị các tab trang chủ thành các cột cạnh nhau trên cửa sổ rộng (kiểu TweetDeck / Flare).",
+  "@deck_mode_description": {},
+  "deck_rows": "Số hàng deck",
+  "@deck_rows": {},
+  "deck_rows_description": "Chia các cột deck thành số hàng xếp chồng này trên cửa sổ rộng. 1 giữ một hàng cuộn duy nhất.",
+  "@deck_rows_description": {},
   "default_feed_tab": "Tab bảng tin mặc định",
   "@default_feed_tab": {},
   "default_feed_tab_description": "Lựa chọn tab mặc định được hiển thị trong bảng tin chính",
@@ -736,9 +744,5 @@
   "zen_mode_page_cap": "Độ dài bảng tin ở chế độ zen",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "Số trang bảng tin tải ở chế độ zen trước khi tạm dừng.",
-  "@zen_mode_page_cap_description": {},
-  "deck_mode": "Chế độ deck",
-  "@deck_mode": {},
-  "deck_mode_description": "Hiển thị các tab trang chủ thành các cột cạnh nhau trên cửa sổ rộng (kiểu TweetDeck / Flare).",
-  "@deck_mode_description": {}
+  "@zen_mode_page_cap_description": {}
 }

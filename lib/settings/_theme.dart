@@ -73,6 +73,17 @@ class SettingsThemeFragment extends StatelessWidget {
             subtitle: Text(L10n.of(context).deck_mode_description),
             pref: optionDeckMode,
           ),
+          PrefDropdown(
+            fullWidth: false,
+            title: Text(L10n.of(context).deck_rows),
+            subtitle: Text(L10n.of(context).deck_rows_description),
+            pref: optionDeckColumnRows,
+            disabled: !prefs.get(optionDeckMode),
+            items: [
+              for (final rows in deckColumnRowChoices)
+                DropdownMenuItem(value: rows, child: Text('$rows')),
+            ],
+          ),
         ]),
       ),
     );

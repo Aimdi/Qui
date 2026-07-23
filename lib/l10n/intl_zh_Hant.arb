@@ -123,6 +123,14 @@
   "@date_created": {},
   "date_subscribed": "訂閱日期",
   "@date_subscribed": {},
+  "deck_mode": "多欄模式",
+  "@deck_mode": {},
+  "deck_mode_description": "在寬螢幕上將主頁分頁顯示為並排多欄（TweetDeck / Flare 風格）。",
+  "@deck_mode_description": {},
+  "deck_rows": "多欄列數",
+  "@deck_rows": {},
+  "deck_rows_description": "在寬螢幕上將欄分成這麼多堆疊的列。設為 1 時維持單列橫向捲動。",
+  "@deck_rows_description": {},
   "default_feed_tab": "預設動態分頁",
   "@default_feed_tab": {},
   "default_feed_tab_description": "選擇主動態中顯示的預設分頁",
@@ -736,9 +744,5 @@
   "zen_mode_page_cap": "禪模式時間軸長度",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "禪模式下時間軸暫停前載入的頁數。",
-  "@zen_mode_page_cap_description": {},
-  "deck_mode": "多欄模式",
-  "@deck_mode": {},
-  "deck_mode_description": "在寬螢幕上將主頁分頁顯示為並排多欄（TweetDeck / Flare 風格）。",
-  "@deck_mode_description": {}
+  "@zen_mode_page_cap_description": {}
 }

@@ -123,6 +123,14 @@
   "@date_created": {},
   "date_subscribed": "Fecha de suscripción",
   "@date_subscribed": {},
+  "deck_mode": "Modo deck",
+  "@deck_mode": {},
+  "deck_mode_description": "Muestra las pestañas de inicio en columnas lado a lado en pantallas anchas (estilo TweetDeck / Flare).",
+  "@deck_mode_description": {},
+  "deck_rows": "Filas del deck",
+  "@deck_rows": {},
+  "deck_rows_description": "Divide las columnas del deck en esta cantidad de filas apiladas en ventanas anchas. 1 mantiene una sola fila con desplazamiento.",
+  "@deck_rows_description": {},
   "default_feed_tab": "Pestaña de feed predeterminada",
   "@default_feed_tab": {},
   "default_feed_tab_description": "Seleccionar la pestaña predeterminada que se muestra en el feed principal",
@@ -736,9 +744,5 @@
   "zen_mode_page_cap": "Longitud del feed en modo zen",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "Cuántas páginas carga el feed en modo zen antes de hacer una pausa.",
-  "@zen_mode_page_cap_description": {},
-  "deck_mode": "Modo deck",
-  "@deck_mode": {},
-  "deck_mode_description": "Muestra las pestañas de inicio en columnas lado a lado en pantallas anchas (estilo TweetDeck / Flare).",
-  "@deck_mode_description": {}
+  "@zen_mode_page_cap_description": {}
 }
