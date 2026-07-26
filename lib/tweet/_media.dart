@@ -418,7 +418,7 @@ class _TweetMediaViewState extends State<TweetMediaView> {
 
               final xfile = XFile(path, mimeType: 'image/jpeg');
 
-              Share.shareXFiles([xfile]).then((value) => file.delete());
+              SharePlus.instance.share(ShareParams(files: [xfile])).then((value) => file.delete());
             },
             child: const Icon(Icons.share),
           ),
