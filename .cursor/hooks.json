@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      { "matcher": "\\.dart$", "command": ".cursor/hooks/format.sh" }
+    ],
+    "beforeShellExecution": [
+      { "matcher": "git push|flutter clean|rm -rf|git reset --hard", "command": ".cursor/hooks/deny.sh", "failClosed": true }
+    ],
+    "stop": [
+      { "command": "scripts/verify.sh" }
+    ]
+  }
+}
