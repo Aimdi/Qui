@@ -60,6 +60,8 @@ const optionThemeTrueBlackTweetCards = 'theme.true_black_tweet_cards';
 const optionShowNavigationLabels = 'theme.show_navigation_labels';
 /// Flare/TweetDeck-style multi-column layout for desktop home tabs.
 const optionDeckMode = 'theme.deck_mode';
+/// How many stacked rows deck columns wrap into (1 = single scrolling row).
+const optionDeckColumnRows = 'theme.deck_column_rows';
 const optionUseAbsoluteTimestamp = "option.absolute_timestamp";
 
 const themeColors = {
@@ -110,6 +112,9 @@ const zenModeMaxTweetsPerAuthor = 4;
 
 // Selectable values for the zen-mode page cap (pages per feed session)
 const zenModePageCapChoices = [3, 5, 10, 20];
+
+// Selectable row counts for deck mode (1 = single horizontal scrolling row)
+const deckColumnRowChoices = [1, 2, 3];
 
 // How many extra pages an initial feed load may fetch per chunk to close the
 // gap between freshly fetched posts and the previously stored ones

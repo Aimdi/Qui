@@ -123,6 +123,14 @@
   "@date_created": {},
   "date_subscribed": "Data de Subscripció",
   "@date_subscribed": {},
+  "deck_mode": "Deck mode",
+  "@deck_mode": {},
+  "deck_mode_description": "Show home tabs as side-by-side columns on wide windows (TweetDeck / Flare style).",
+  "@deck_mode_description": {},
+  "deck_rows": "Deck rows",
+  "@deck_rows": {},
+  "deck_rows_description": "Split deck columns into this many stacked rows on wide windows. 1 keeps a single scrolling row.",
+  "@deck_rows_description": {},
   "default_feed_tab": "Pestanya de feed predeterminada",
   "@default_feed_tab": {},
   "default_feed_tab_description": "Selecciona la pestanya predeterminada que es mostra al feed principal",
@@ -736,9 +744,5 @@
   "zen_mode_page_cap": "Longitud del feed en mode zen",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "Quantes pàgines carrega el feed en mode zen abans de fer una pausa.",
-  "@zen_mode_page_cap_description": {},
-  "deck_mode": "Deck mode",
-  "@deck_mode": {},
-  "deck_mode_description": "Show home tabs as side-by-side columns on wide windows (TweetDeck / Flare style).",
-  "@deck_mode_description": {}
+  "@zen_mode_page_cap_description": {}
 }

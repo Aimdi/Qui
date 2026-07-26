@@ -123,6 +123,14 @@
   "@date_created": {},
   "date_subscribed": "Дата падпіскі",
   "@date_subscribed": {},
+  "deck_mode": "Deck mode",
+  "@deck_mode": {},
+  "deck_mode_description": "Show home tabs as side-by-side columns on wide windows (TweetDeck / Flare style).",
+  "@deck_mode_description": {},
+  "deck_rows": "Deck rows",
+  "@deck_rows": {},
+  "deck_rows_description": "Split deck columns into this many stacked rows on wide windows. 1 keeps a single scrolling row.",
+  "@deck_rows_description": {},
   "default_feed_tab": "Укладка стужкі па змаўчанні",
   "@default_feed_tab": {},
   "default_feed_tab_description": "Выбраць укладку па змаўчанні, якая адлюстроўваецца ў галоўнай стужцы",
@@ -736,9 +744,5 @@
   "zen_mode_page_cap": "Даўжыня стужкі ў дзэн-рэжыме",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "Колькі старонак загружае стужка ў дзэн-рэжыме перад паўзай.",
-  "@zen_mode_page_cap_description": {},
-  "deck_mode": "Deck mode",
-  "@deck_mode": {},
-  "deck_mode_description": "Show home tabs as side-by-side columns on wide windows (TweetDeck / Flare style).",
-  "@deck_mode_description": {}
+  "@zen_mode_page_cap_description": {}
 }

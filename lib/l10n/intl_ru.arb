@@ -123,6 +123,14 @@
   "@date_created": {},
   "date_subscribed": "Дата подписки",
   "@date_subscribed": {},
+  "deck_mode": "Режим колонок",
+  "@deck_mode": {},
+  "deck_mode_description": "Показывать вкладки главной бок о бок на широких окнах (как TweetDeck / Flare).",
+  "@deck_mode_description": {},
+  "deck_rows": "Ряды колонок",
+  "@deck_rows": {},
+  "deck_rows_description": "Распределяет колонки на указанное число рядов в широких окнах. 1 — один прокручиваемый ряд.",
+  "@deck_rows_description": {},
   "default_feed_tab": "Вкладка ленты по умолчанию",
   "@default_feed_tab": {},
   "default_feed_tab_description": "Выбрать вкладку по умолчанию, отображаемую в главной ленте",
@@ -736,9 +744,5 @@
   "zen_mode_page_cap": "Длина ленты в дзен-режиме",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "Сколько страниц загружает лента в дзен-режиме перед паузой.",
-  "@zen_mode_page_cap_description": {},
-  "deck_mode": "Режим колонок",
-  "@deck_mode": {},
-  "deck_mode_description": "Показывать вкладки главной бок о бок на широких окнах (как TweetDeck / Flare).",
-  "@deck_mode_description": {}
+  "@zen_mode_page_cap_description": {}
 }

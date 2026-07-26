@@ -45,6 +45,7 @@ class _QuiShellState extends State<QuiShell> {
   final GlobalKey<DeckBodyState> _deckKey = GlobalKey<DeckBodyState>();
   final DetailPaneController _detailPaneController = DetailPaneController();
   bool _deckMode = false;
+  int _deckRows = 1;
 
   void unfocusOtherPages() {
     _focusNodes.forEach((index, focusNode) {
@@ -62,6 +63,14 @@ class _QuiShellState extends State<QuiShell> {
     }
   }
 
+  void _onDeckRowsPref() {
+    if (!mounted) return;
+    final rows = widget.prefs.get<int>(optionDeckColumnRows) ?? 1;
+    if (rows != _deckRows) {
+      setState(() => _deckRows = rows);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -70,7 +79,9 @@ class _QuiShellState extends State<QuiShell> {
     _sideTrendsController = ScrollController();
     _deckScrollController = ScrollController();
     _deckMode = widget.prefs.get(optionDeckMode) == true;
+    _deckRows = widget.prefs.get<int>(optionDeckColumnRows) ?? 1;
     widget.prefs.addKeyListener(optionDeckMode, _onDeckModePref);
+    widget.prefs.addKeyListener(optionDeckColumnRows, _onDeckRowsPref);
     _ensureControllers(widget.pages.length);
   }
 
@@ -168,6 +179,7 @@ class _QuiShellState extends State<QuiShell> {
         deckScrollController: _deckScrollController,
         deckKey: _deckKey,
         deckMode: _deckMode,
+        deckRows: _deckRows,
         onPageChanged: (page) => setState(() => _currentPage = page),
         onDestinationSelected: _selectPage,
         onSearch: _openSearch,
@@ -179,6 +191,7 @@ class _QuiShellState extends State<QuiShell> {
   @override
   void dispose() {
     widget.prefs.removeKeyListener(optionDeckMode, _onDeckModePref);
+    widget.prefs.removeKeyListener(optionDeckColumnRows, _onDeckRowsPref);
     _pageController.dispose();
     _sideTrendsController.dispose();
     _deckScrollController.dispose();
@@ -283,6 +296,7 @@ class _DesktopShell extends StatelessWidget {
   final ScrollController deckScrollController;
   final GlobalKey<DeckBodyState> deckKey;
   final bool deckMode;
+  final int deckRows;
   final ValueChanged<int> onPageChanged;
   final Future<void> Function(int) onDestinationSelected;
   final VoidCallback onSearch;
@@ -298,6 +312,7 @@ class _DesktopShell extends StatelessWidget {
     required this.deckScrollController,
     required this.deckKey,
     required this.deckMode,
+    required this.deckRows,
     required this.onPageChanged,
     required this.onDestinationSelected,
     required this.onSearch,
@@ -423,7 +438,8 @@ class _DesktopShell extends StatelessWidget {
                       pages: pages,
                       children: pageChildren,
                       focusedIndex: safeIndex,
-                      scrollController: deckScrollController,
+                      scrollController: deckRows <= 1 ? deckScrollController : null,
+                      rows: deckRows,
                       onFocusChanged: onPageChanged,
                     )
                   : ContentFrame(
