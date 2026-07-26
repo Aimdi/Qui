@@ -805,15 +805,13 @@ class TweetTileState extends State<TweetTile> with SingleTickerProviderStateMixi
 
     final footerBar = _buildFooterBar(tweet, tweetText, shareBaseUrl, locale, numberFormat, isArticle: tweet.article != null);
 
-    var article = Container();
+    Widget article = Container();
     if (tweet.article != null) {
-      article = Container(
-        child: ArticleWidget(
-          article: tweet.article!,
-          expand: widget.tweetOpened,
-          onTap: () => onClickOpenTweet(tweet),
-          bottomBar: widget.tweetOpened ? footerBar : null,
-        )
+      article = ArticleWidget(
+        article: tweet.article!,
+        expand: widget.tweetOpened,
+        onTap: () => onClickOpenTweet(tweet),
+        bottomBar: widget.tweetOpened ? footerBar : null,
       );
     }
 

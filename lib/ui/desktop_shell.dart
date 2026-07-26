@@ -421,10 +421,10 @@ class _DesktopShell extends StatelessWidget {
                   ? DeckBody(
                       key: deckKey,
                       pages: pages,
-                      children: pageChildren,
                       focusedIndex: safeIndex,
                       scrollController: deckScrollController,
                       onFocusChanged: onPageChanged,
+                      children: pageChildren,
                     )
                   : ContentFrame(
                       maxWidth: showRightPane ? quiTimelineMaxWidth + 16 : quiTimelineMaxWidth + 40,
