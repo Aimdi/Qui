@@ -12,6 +12,7 @@ import 'package:qui/profile/profile.dart';
 import 'package:qui/tweet/_photo.dart';
 import 'package:qui/tweet/_video.dart';
 import 'package:qui/ui/errors.dart';
+import 'package:qui/ui/press_actions.dart';
 import 'package:qui/utils/downloads.dart';
 import 'package:path/path.dart' as path;
 import 'package:pref/pref.dart';
@@ -225,7 +226,7 @@ class _TweetMediaState extends State<TweetMedia> {
               // fullscreen media viewer. Photos and GIFs still open it.
               final isVideo = item.type == 'video';
 
-              return GestureDetector(
+              return PressActions(
                 onTap: isVideo
                     ? null
                     : () => Navigator.push(
@@ -236,7 +237,7 @@ class _TweetMediaState extends State<TweetMedia> {
                                 media: widget.media,
                                 username: widget.username,
                                 tweetId: widget.tweetId))),
-                onLongPress:
+                onInvoke:
                     item.type == 'photo' ? () => downloadMediaItem(context, item, widget.username) : null,
                 child: _TweetMediaItem(
                     media: item,

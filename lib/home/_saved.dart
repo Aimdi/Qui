@@ -20,6 +20,7 @@ import 'package:qui/saved/saved_tweet_folder_model.dart';
 import 'package:qui/saved/saved_tweet_model.dart';
 import 'package:qui/tweet/tweet.dart';
 import 'package:qui/ui/errors.dart';
+import 'package:qui/ui/press_actions.dart';
 import 'package:pref/pref.dart';
 import 'package:provider/provider.dart';
 
@@ -268,8 +269,8 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: GestureDetector(
-        onLongPress: isFolder ? () => _showFolderMenu(value, label) : null,
+      child: PressActions(
+        onInvoke: isFolder ? () => _showFolderMenu(value, label) : null,
         child: Theme(
           data: Theme.of(context).copyWith(
             splashFactory: NoSplash.splashFactory,
