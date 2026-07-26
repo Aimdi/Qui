@@ -44,6 +44,8 @@ class _SubscriptionGroupsState extends State<SubscriptionGroups> {
           Navigator.pushNamed(context, routeGroup, arguments: GroupScreenArguments(id: id, name: name));
         },
         onLongPress: onLongPress,
+        // Desktop: right-click opens the same edit dialog as long-press.
+        onSecondaryTap: onLongPress,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,

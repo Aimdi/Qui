@@ -27,6 +27,7 @@ import 'package:qui/article/article.dart';
 import 'package:qui/ui/dates.dart';
 import 'package:qui/ui/detail_pane.dart';
 import 'package:qui/ui/errors.dart';
+import 'package:qui/ui/press_actions.dart';
 import 'package:qui/user.dart';
 import 'package:qui/utils/rich_text.dart';
 import 'package:qui/utils/translation.dart';
@@ -392,8 +393,8 @@ class TweetTileState extends State<TweetTile> with SingleTickerProviderStateMixi
               scrollDirection: Axis.horizontal,
               child: Row(
             children: [
-              GestureDetector(
-                onLongPress: () {
+              PressActions(
+                onInvoke: () {
                   try {
                     context.read<ZenRepliesState>().reveal();
                   } catch (_) {
@@ -469,8 +470,8 @@ class TweetTileState extends State<TweetTile> with SingleTickerProviderStateMixi
                         }
                       });
 
-                return GestureDetector(
-                  onLongPress: () async {
+                return PressActions(
+                  onInvoke: () async {
                     await showSaveToFolderSheet(context,
                         tweetId: tweet.idStr!, userId: tweet.user?.idStr, content: tweet.toJson());
                     if (mounted) {
@@ -545,10 +546,11 @@ class TweetTileState extends State<TweetTile> with SingleTickerProviderStateMixi
                 },
               ),
               if (!isArticle)
-                GestureDetector(
-                  // Long-press translates the whole conversation when a
-                  // broadcast is in scope; otherwise just this tweet.
-                  onLongPress: () {
+                PressActions(
+                  // Long-press (touch) or right-click (mouse) translates the
+                  // whole conversation when a broadcast is in scope; otherwise
+                  // just this tweet.
+                  onInvoke: () {
                     final broadcast = _translationBroadcast;
                     if (broadcast != null) {
                       broadcast.requestAll();

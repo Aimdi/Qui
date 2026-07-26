@@ -67,6 +67,7 @@ class SettingsAboutFragment extends StatelessWidget {
     return Column(children: [
       InkWell(
           onLongPress: () => _appInfo(context),
+          onSecondaryTap: () => _appInfo(context),
           child: PrefLabel(
             leading: const Icon(Icons.info),
             title: Text(L10n.of(context).version),
