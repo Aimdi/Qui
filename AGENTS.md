@@ -20,3 +20,12 @@ Qui is a single-process Flutter **Linux desktop** app (no backend, no DB server;
 - The app needs a real X account: paste browser cookies (`auth_token` + `ct0`) via Settings → Accounts → Login (see `README.md`). No credentials are provisioned here.
 - Without login you will see a "You are not logged in" dialog, an "update available" dialog, and a "Something went wrong" / `Provider<GroupModel>` error banner in feed areas. These are expected in an unauthenticated session and are **not** environment problems.
 - Local-first features work without login and are the safest things to exercise in this environment: creating **Groups**, and changing **Settings/themes** (both persist to local SQLite).
+
+## Agent working rules
+- Before claiming any task is done, run `scripts/verify.sh`. It must exit 0.
+- Never edit pubspec.lock. Never edit pubspec.yaml — propose the change in your summary instead.
+- Never edit generated files: lib/generated/**, lib/l10n/generated/**, licenses/**.
+- Stay inside the file territory named in your task. If a fix requires touching another lane, stop and report instead.
+- One task per branch. Commit in small logical units with conventional commit messages.
+- This is an X-only client. Do not add support for other networks.
+- Flutter 3.44+ via FVM. Always prefix flutter/dart invocations with `fvm` where the pin applies.
