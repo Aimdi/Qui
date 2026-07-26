@@ -15,51 +15,40 @@ class SettingsAboutFragment extends StatelessWidget {
 
   Future<void> _appInfo(BuildContext context) async {
     var packageInfo = await PackageInfo.fromPlatform();
-    Map<String, Object>? metadata;
+    if (!context.mounted) return;
 
-    if (Platform.isAndroid && context.mounted) {
-      if (context.mounted) {
-        metadata = {
-          'locale': Localizations.localeOf(context).languageCode,
-          'os': 'android',
-        };
-      }
-    } else {
-      if (context.mounted) {
-        metadata = {
-          'abis': [],
-          'locale': Localizations.localeOf(context).languageCode,
-          'os': 'ios',
-          'version': packageInfo.buildNumber,
-        };
-      }
+    // Report the real platform (Platform.operatingSystem is one of android /
+    // ios / linux / macos / windows) instead of the previous hard-coded 'ios',
+    // and always show the dialog — the old Android branch built metadata but
+    // never opened it.
+    final metadata = <String, Object>{
+      'locale': Localizations.localeOf(context).languageCode,
+      'os': Platform.operatingSystem,
+      'version': packageInfo.buildNumber,
+    };
+    final content = JsonEncoder.withIndent(' ' * 2).convert(metadata);
 
-      if (context.mounted) {
-        showDialog(
-            context: context,
-            builder: (context) {
-              var content = JsonEncoder.withIndent(' ' * 2).convert(metadata);
-
-              return AlertDialog(
-                  actions: [
-                    TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: Text(L10n.of(context).ok)),
-                  ],
-                  title: Text(L10n.of(context).app_info),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 16),
-                      Text(content, style: const TextStyle(fontFamily: 'monospace'))
-                    ],
-                  ));
-            });
-      }
-    }
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+              actions: [
+                TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text(L10n.of(context).ok)),
+              ],
+              title: Text(L10n.of(context).app_info),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  Text(content, style: const TextStyle(fontFamily: 'monospace'))
+                ],
+              ));
+        });
   }
 
   @override
