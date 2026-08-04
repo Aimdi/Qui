@@ -6,8 +6,12 @@ import 'package:flutter_triple/flutter_triple.dart';
 import 'package:qui/constants.dart';
 import 'package:qui/database/entities.dart';
 import 'package:qui/database/repository.dart';
+import 'package:qui/group/custom_feed_rules.dart';
+import 'package:qui/group/group_tree.dart';
+import 'package:qui/subscriptions/group_mark_style.dart';
 import 'package:logging/logging.dart';
 import 'package:pref/pref.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 var defaultGroupIcon = '{"pack":"custom","key":"rss_feed"}';
@@ -24,6 +28,21 @@ IconData deserializeIconData(String iconData) {
 
   // Use this as a default;
   return Icons.rss_feed;
+}
+
+/// Every group's parent, keyed by group id, for the nesting helpers in
+/// `group_tree.dart`. A group that stands on its own maps to null.
+Future<Map<String, String?>> readGroupParents(DatabaseExecutor database) async {
+  try {
+    final rows = await database.query(tableSubscriptionGroup, columns: ['id', 'parent_id']);
+
+    return {for (final row in rows) row['id'] as String: row['parent_id'] as String?};
+  } catch (e) {
+    // The column is added by a migration that is allowed to fail on a damaged
+    // database. Without it nothing nests, which is the old behaviour — far
+    // better than every group feed refusing to load.
+    return const {};
+  }
 }
 
 class GroupModel extends Store<SubscriptionGroupGet> {
@@ -60,19 +79,40 @@ class GroupModel extends Store<SubscriptionGroupGet> {
             includeRetweets: _includeOverride(group['include_retweets']),
             popular: group['popular'] == 1,
             custom: group['custom'] == 1,
-            contentFilter: group['content_filter'] as String? ?? contentFilterDefault);
+            contentFilter: group['content_filter'] as String? ?? contentFilterDefault,
+            minLikes: (group['min_likes'] as int?) ?? 0,
+            minRetweets: (group['min_retweets'] as int?) ?? 0,
+            mutedKeywords: parseMutedKeywords(group['muted_keywords'] as String?));
       }
 
+      // A group's feed is its own members plus everything nested inside it, so
+      // the membership queries ask for a set of group ids rather than one.
+      final parents = await readGroupParents(database);
+      final ids = groupAndDescendants(id, parents).toList(growable: false);
+      final placeholders = List.filled(ids.length, '?').join(', ');
+
       var searchSubscriptions = (await database.rawQuery(
-              'SELECT s.* FROM $tableSearchSubscription s LEFT JOIN $tableSubscriptionGroupMember sgm ON sgm.profile_id = s.id WHERE sgm.group_id = ?',
-              [id]))
+              'SELECT DISTINCT s.* FROM $tableSearchSubscription s LEFT JOIN $tableSubscriptionGroupMember sgm ON sgm.profile_id = s.id WHERE sgm.group_id IN ($placeholders)',
+              ids))
           .map((e) => SearchSubscription.fromMap(e))
           .toList(growable: false);
 
       var userSubscriptions = (await database.rawQuery(
-              'SELECT s.* FROM $tableSubscription s LEFT JOIN $tableSubscriptionGroupMember sgm ON sgm.profile_id = s.id WHERE sgm.group_id = ?',
-              [id]))
+              'SELECT DISTINCT s.* FROM $tableSubscription s LEFT JOIN $tableSubscriptionGroupMember sgm ON sgm.profile_id = s.id WHERE sgm.group_id IN ($placeholders)',
+              ids))
           .map((e) => UserSubscription.fromMap(e))
+          .toList(growable: false);
+
+      var substackSubscriptions = (await database.rawQuery(
+              'SELECT DISTINCT s.* FROM $tableSubstackSubscription s LEFT JOIN $tableSubscriptionGroupMember sgm ON sgm.profile_id = s.id WHERE sgm.group_id IN ($placeholders)',
+              ids))
+          .map((e) => SubstackSubscription.fromMap(e))
+          .toList(growable: false);
+
+      var redditSubscriptions = (await database.rawQuery(
+              'SELECT DISTINCT s.* FROM $tableRedditSubscription s LEFT JOIN $tableSubscriptionGroupMember sgm ON sgm.profile_id = s.id WHERE sgm.group_id IN ($placeholders)',
+              ids))
+          .map((e) => RedditSubscription.fromMap(e))
           .toList(growable: false);
 
       // TODO: Factory
@@ -80,12 +120,15 @@ class GroupModel extends Store<SubscriptionGroupGet> {
           id: group['id'] as String,
           name: group['name'] as String,
           icon: group['icon'] as String,
-          subscriptions: [...userSubscriptions, ...searchSubscriptions],
+          subscriptions: [...userSubscriptions, ...searchSubscriptions, ...substackSubscriptions, ...redditSubscriptions],
           includeReplies: _includeOverride(group['include_replies']),
           includeRetweets: _includeOverride(group['include_retweets']),
           popular: group['popular'] == 1,
           custom: group['custom'] == 1,
-          contentFilter: group['content_filter'] as String? ?? contentFilterDefault);
+          contentFilter: group['content_filter'] as String? ?? contentFilterDefault,
+          minLikes: (group['min_likes'] as int?) ?? 0,
+          minRetweets: (group['min_retweets'] as int?) ?? 0,
+          mutedKeywords: parseMutedKeywords(group['muted_keywords'] as String?));
     });
   }
 
@@ -123,6 +166,27 @@ class GroupModel extends Store<SubscriptionGroupGet> {
           .rawUpdate('UPDATE $tableSubscriptionGroup SET custom = ?, popular = 0 WHERE id = ?', [value, state.id]);
       return state.copyWith(custom: value, popular: false);
     });
+  }
+
+  /// Custom-feed engagement thresholds. 0 turns a threshold off.
+  Future<void> setSubscriptionGroupMinLikes(int value) async {
+    await _updateCustomRule('min_likes', value < 0 ? 0 : value);
+    update(state.copyWith(minLikes: value < 0 ? 0 : value));
+  }
+
+  Future<void> setSubscriptionGroupMinRetweets(int value) async {
+    await _updateCustomRule('min_retweets', value < 0 ? 0 : value);
+    update(state.copyWith(minRetweets: value < 0 ? 0 : value));
+  }
+
+  Future<void> setSubscriptionGroupMutedKeywords(List<String> keywords) async {
+    await _updateCustomRule('muted_keywords', keywords.isEmpty ? null : joinMutedKeywords(keywords));
+    update(state.copyWith(mutedKeywords: keywords));
+  }
+
+  Future<void> _updateCustomRule(String column, Object? value) async {
+    final database = await Repository.writable();
+    await database.update(tableSubscriptionGroup, {column: value}, where: 'id = ?', whereArgs: [state.id]);
   }
 
   Future<void> setSubscriptionGroupContentFilter(String value) async {
@@ -174,24 +238,112 @@ class GroupsModel extends Store<List<SubscriptionGroup>> {
 
       var orderByDirection = orderGroupsAscending ? 'COLLATE NOCASE ASC' : 'COLLATE NOCASE DESC';
 
-      var query =
-          "SELECT g.id, g.name, g.icon, g.color, g.created_at, COUNT(gm.profile_id) AS number_of_members FROM $tableSubscriptionGroup g LEFT JOIN $tableSubscriptionGroupMember gm ON gm.group_id = g.id WHERE g.id != '-1' GROUP BY g.id ORDER BY $orderGroupsBy $orderByDirection";
+      // Pinned groups always come first; within each block the chosen field
+      // applies. Manual order sorts on the persisted position column.
+      var orderBy = orderGroupsBy == 'position'
+          ? 'g.position ${orderGroupsAscending ? 'ASC' : 'DESC'}'
+          : 'g.$orderGroupsBy $orderByDirection';
 
-      return (await database.rawQuery(query)).map((e) => SubscriptionGroup.fromMap(e)).toList(growable: false);
+      var query =
+          "SELECT g.id, g.name, g.icon, g.color, g.created_at, g.pinned, g.emoji, g.mark_style, g.parent_id, COUNT(gm.profile_id) AS number_of_members FROM $tableSubscriptionGroup g LEFT JOIN $tableSubscriptionGroupMember gm ON gm.group_id = g.id WHERE g.id != '-1' GROUP BY g.id ORDER BY g.pinned DESC, $orderBy";
+
+      var groups = (await database.rawQuery(query)).map((e) => SubscriptionGroup.fromMap(e)).toList(growable: false);
+      var previews = await _loadMemberPreviews(database);
+
+      return groups.map((g) => g.withMemberPreviews(previews[g.id] ?? const [])).toList(growable: false);
     });
     for (final callback in _onGroupsReloaded.values) {
       callback();
     }
   }
 
+  /// How many members each group tile previews.
+  static const _avatarPreviewCount = 4;
+
+  /// The first few members of every group, for the tile avatar mosaic.
+  ///
+  /// One query for all groups (never N+1). Members without a picture are
+  /// deliberately included — they render as a deterministic monogram, which is
+  /// far better than a group of avatar-less accounts showing nothing at all.
+  ///
+  /// Deliberately NOT a `ROW_NUMBER() OVER (PARTITION BY ...)` single query:
+  /// window functions need SQLite >= 3.25, and this app's minSdk 24 reaches
+  /// Android 7 devices whose bundled SQLite predates that. The per-group cut is
+  /// therefore taken in Dart.
+  Future<Map<String, List<GroupMemberPreview>>> _loadMemberPreviews(DatabaseExecutor database) async {
+    final previews = <String, List<GroupMemberPreview>>{};
+
+    void add(String groupId, GroupMemberPreview preview) {
+      final list = previews.putIfAbsent(groupId, () => <GroupMemberPreview>[]);
+      if (list.length < _avatarPreviewCount) {
+        list.add(preview);
+      }
+    }
+
+    final rows = await database.rawQuery(
+        'SELECT gm.group_id, s.id, s.name, s.screen_name, s.profile_image_url_https FROM $tableSubscriptionGroupMember gm '
+        'JOIN $tableSubscription s ON s.id = gm.profile_id '
+        'ORDER BY gm.group_id, s.screen_name COLLATE NOCASE');
+
+    for (final row in rows) {
+      final screenName = row['screen_name'] as String?;
+      add(
+          row['group_id'] as String,
+          GroupMemberPreview(
+            id: row['id'] as String,
+            name: (row['name'] as String?) ?? screenName ?? '',
+            avatarUrl: row['profile_image_url_https'] as String?,
+          ));
+    }
+
+    // Subreddits are members too, and a group made only of them used to have no
+    // cover at all. They come second so a mixed group still leads with faces.
+    final subreddits = await database.rawQuery(
+        'SELECT gm.group_id, s.id, s.name FROM $tableSubscriptionGroupMember gm '
+        'JOIN $tableRedditSubscription s ON s.id = gm.profile_id '
+        'ORDER BY gm.group_id, s.name COLLATE NOCASE');
+
+    for (final row in subreddits) {
+      final name = row['name'] as String;
+      add(
+          row['group_id'] as String,
+          GroupMemberPreview(id: row['id'] as String, name: name, subreddit: name));
+    }
+
+    return previews;
+  }
+
   /// Makes the global replies/reposts default apply to every group again by
   /// clearing each group's own choice.
+  ///
+  /// Deliberately not called when the global switches change: a default that
+  /// overwrites explicit per-feed choices is not a default. This runs only from
+  /// the "apply to all feeds" action.
   Future<void> clearIncludeOverrides({required bool replies}) async {
     final database = await Repository.writable();
     final column = replies ? 'include_replies' : 'include_retweets';
 
     await database.rawUpdate('UPDATE $tableSubscriptionGroup SET $column = NULL');
     await reloadGroups();
+  }
+
+  /// How many groups keep their own replies / reposts choice instead of
+  /// following the global default.
+  ///
+  /// Worth surfacing because the columns were originally created with
+  /// `DEFAULT true`: groups made before the default existed hold an explicit
+  /// value, so the global switch would appear to do nothing for them.
+  Future<({int replies, int retweets})> countIncludeOverrides() async {
+    final database = await Repository.readOnly();
+    final rows = await database.rawQuery(
+        'SELECT COUNT(include_replies) AS replies, COUNT(include_retweets) AS retweets '
+        "FROM $tableSubscriptionGroup WHERE id != '-1'");
+
+    final row = rows.isEmpty ? const <String, Object?>{} : rows.first;
+    return (
+      replies: (row['replies'] as int?) ?? 0,
+      retweets: (row['retweets'] as int?) ?? 0,
+    );
   }
 
   Future<List<SubscriptionGroupMember>> listGroupMembers() async {
@@ -238,6 +390,8 @@ class GroupsModel extends Store<List<SubscriptionGroup>> {
         icon: defaultGroupIcon,
         color: null,
         members: <String>{},
+        emoji: null,
+        markStyle: GroupMarkStyle.auto,
       );
     }
 
@@ -249,6 +403,8 @@ class GroupsModel extends Store<List<SubscriptionGroup>> {
         icon: defaultGroupIcon,
         color: null,
         members: <String>{},
+        emoji: null,
+        markStyle: GroupMarkStyle.auto,
       );
     }
 
@@ -262,10 +418,20 @@ class GroupsModel extends Store<List<SubscriptionGroup>> {
       icon: group.first['icon'] as String,
       color: group.first['color'] == null ? null : Color(group.first['color'] as int),
       members: members,
+      emoji: group.first['emoji'] as String?,
+      markStyle: GroupMarkStyle.coerce(group.first['mark_style']),
     );
   }
 
-  Future saveGroup(String? id, String name, String icon, Color? color, Set<String> subscriptions) async {
+  Future saveGroup(
+    String? id,
+    String name,
+    String icon,
+    Color? color,
+    Set<String> subscriptions, {
+    String? emoji,
+    int markStyle = GroupMarkStyle.auto,
+  }) async {
     await execute(() async {
       var database = await Repository.writable();
 
@@ -282,6 +448,8 @@ class GroupsModel extends Store<List<SubscriptionGroup>> {
           'icon': icon,
           'include_replies': null,
           'include_retweets': null,
+          'emoji': emoji,
+          'mark_style': markStyle,
         });
       } else {
         await database.update(
@@ -290,6 +458,8 @@ class GroupsModel extends Store<List<SubscriptionGroup>> {
               'name': name,
               'color': color?.toARGB32(),
               'icon': icon,
+              'emoji': emoji,
+              'mark_style': markStyle,
             },
             where: 'id = ?',
             whereArgs: [id]);
@@ -309,6 +479,56 @@ class GroupsModel extends Store<List<SubscriptionGroup>> {
       // TODO: Replace the group in the state instead
       return state;
     });
+  }
+
+  Future<void> toggleGroupPinned(String id, bool pinned) async {
+    var database = await Repository.writable();
+    await database.update(tableSubscriptionGroup, {'pinned': pinned ? 1 : 0}, where: 'id = ?', whereArgs: [id]);
+    await reloadGroups();
+  }
+
+  /// Nests [id] inside [parentId], or lifts it back to the top with null.
+  ///
+  /// A nesting that would put a group inside itself — directly or round a chain
+  /// of parents — is refused rather than stored, because the feed that resolved
+  /// it would never finish.
+  Future<bool> setGroupParent(String id, String? parentId) async {
+    var database = await Repository.writable();
+
+    if (parentId != null) {
+      final parents = await readGroupParents(database);
+      if (wouldNestInsideItself(id, parentId, parents)) {
+        return false;
+      }
+    }
+
+    await database.update(tableSubscriptionGroup, {'parent_id': parentId}, where: 'id = ?', whereArgs: [id]);
+    await reloadGroups();
+    return true;
+  }
+
+  /// Persists a manual order: each group's position becomes its index in [ids].
+  Future<void> saveGroupPositions(List<String> ids) async {
+    var database = await Repository.writable();
+    var batch = database.batch();
+    for (var (i, id) in ids.indexed) {
+      batch.update(tableSubscriptionGroup, {'position': i}, where: 'id = ?', whereArgs: [id]);
+    }
+    await batch.commit(noResult: true);
+    await reloadGroups();
+  }
+
+  /// Moves every member of [sourceId] into [targetId] (skipping duplicates),
+  /// then deletes the now-empty source group.
+  Future<void> mergeGroups(String sourceId, String targetId) async {
+    var database = await Repository.writable();
+    await database.rawInsert(
+        'INSERT OR IGNORE INTO $tableSubscriptionGroupMember (group_id, profile_id) '
+        'SELECT ?, profile_id FROM $tableSubscriptionGroupMember WHERE group_id = ?',
+        [targetId, sourceId]);
+    await database.delete(tableSubscriptionGroupMember, where: 'group_id = ?', whereArgs: [sourceId]);
+    await database.delete(tableSubscriptionGroup, where: 'id = ?', whereArgs: [sourceId]);
+    await reloadGroups();
   }
 
   void changeOrderSubscriptionGroupsBy(String? value) async {

@@ -14,7 +14,13 @@ import 'package:qui/group/feed_session_cache.dart';
 import 'package:qui/group/group_screen.dart';
 import 'package:qui/profile/media_grid/media_grid.dart';
 import 'package:qui/profile/media_grid/media_grid_items/media_grid_item.dart';
+import 'package:logging/logging.dart';
+import 'package:qui/plugins/reddit/reddit_interleaved.dart';
+import 'package:qui/plugins/substack/substack_client.dart';
+import 'package:qui/plugins/substack/substack_post_card.dart';
+import 'package:qui/plugins/substack/substack_store.dart';
 import 'package:qui/profile/profile_feed_settings.dart';
+import 'package:qui/tweet/interleaved_items.dart';
 import 'package:qui/tweet/paginated_tweet_list.dart';
 import 'package:qui/tweet/tweet_context_scope.dart';
 import 'package:qui/utils/iterables.dart';
@@ -23,6 +29,7 @@ import 'package:pref/pref.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:qui/utils/urls.dart';
+import 'package:qui/group/custom_feed_rules.dart';
 
 Iterable<BigInt> _tweetIdsOf(Iterable<TweetChain> chains) =>
     chains.expand((c) => c.tweets).map((t) => t.idStr).whereType<String>().map(BigInt.tryParse).whereType<BigInt>();
@@ -50,6 +57,15 @@ class SubscriptionGroupFeed extends StatefulWidget {
   // its subscriptions were loading). Refined to this feed's own chunks once read.
   final List<TweetChain>? initialPreview;
 
+  /// Substack publications in this group. They are members like any other, but
+  /// they have their own source and their own pagination, so they are fetched
+  /// beside the X search rather than inside it.
+  final List<SubstackSubscription> publications;
+
+  /// Subreddits in this group, fetched beside the X search for the same reason
+  /// as the publications: their own source, their own pagination.
+  final List<RedditSubscription> subreddits;
+
   const SubscriptionGroupFeed(
       {super.key,
       required this.group,
@@ -58,7 +74,9 @@ class SubscriptionGroupFeed extends StatefulWidget {
       required this.includeRetweets,
       required this.mediaOnly,
       this.cacheKey,
-      this.initialPreview});
+      this.initialPreview,
+      this.publications = const [],
+      this.subreddits = const []});
 
   @override
   State<SubscriptionGroupFeed> createState() => _SubscriptionGroupFeedState();
@@ -87,7 +105,71 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
   String? _lastRecordedChainId;
   final GlobalKey _caughtUpKey = GlobalKey();
 
+  static final _log = Logger('SubscriptionGroupFeed');
+
   bool get _usesCache => widget.cacheKey != null;
+
+  /// Substack posts loaded for this group's publications, newest first.
+  ///
+  /// Substack pages by offset and X by cursor, so the two cannot share one
+  /// paginator. These are fetched once per mount and slotted among the chains
+  /// by date; scrolling further into X's history does not need more of them,
+  /// because a newsletter publishes a handful of posts a week, not a page.
+  List<InterleavedItem> _substackItems = const [];
+
+  /// Reddit posts for this group's subreddits, newest first.
+  List<InterleavedItem> _redditItems = const [];
+
+  Future<void> _loadRedditPosts() async {
+    if (widget.mediaOnly) {
+      return;
+    }
+
+    // The group's own subreddits, plus every followed one when this is the
+    // combined feed and the reader asked for Reddit in it.
+    final names = {
+      ...widget.subreddits.map((e) => e.name),
+      if (widget.group.id == '-1') ...redditHomeSubreddits(context),
+    }.toList(growable: false);
+
+    final items = await loadRedditInterleaved(context, names);
+    if (mounted && items.isNotEmpty) {
+      setState(() => _redditItems = items);
+    }
+  }
+
+  Future<void> _loadSubstackPosts() async {
+    if (widget.publications.isEmpty || widget.mediaOnly) {
+      return;
+    }
+
+    final client = context.read<SubstackClient>();
+    final items = <InterleavedItem>[];
+
+    for (final publication in widget.publications) {
+      try {
+        final posts = await client.fetchPosts(publicationOf(publication), limit: substackFeedPageSize);
+        for (final post in posts) {
+          final date = post.publishedAt;
+          if (date == null) {
+            continue;
+          }
+          items.add((
+            date: date,
+            build: (context) => SubstackPostCard(post: post, logoUrl: publication.logoUrl),
+          ));
+        }
+      } catch (e) {
+        // One unreachable publication must not empty the whole feed of the
+        // others, nor replace a working timeline with an error screen.
+        _log.warning('Unable to load Substack posts for ${publication.id}: $e');
+      }
+    }
+
+    if (mounted) {
+      setState(() => _substackItems = items);
+    }
+  }
 
   // Chronological feeds only: in popular order a "seen up to" boundary is
   // meaningless, and the media grid shares this loader but shows no divider.
@@ -117,12 +199,15 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
     if (!_feedController.hasItems) {
       _loadPreview();
     }
+    _loadSubstackPosts();
+    _loadRedditPosts();
   }
 
   Future<void> _loadPreview() async {
     var repository = await Repository.readOnly();
     var cached = await readCachedChainsForHashes(repository, widget.chunks.map((e) => e.hash));
     cached = filterHiddenRetweets(cached, await hiddenRetweetScreenNames());
+    cached = filterHiddenReplies(cached, await hiddenReplyScreenNames());
     if (!mounted) return;
     setState(() => _cachedPreview = cached);
   }
@@ -296,7 +381,7 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
         oldWidget.includeRetweets != widget.includeRetweets ||
         oldWidget.group.popular != widget.group.popular ||
         oldWidget.group.custom != widget.group.custom ||
-        oldWidget.group.contentFilter != widget.group.contentFilter ||
+        oldWidget.group.customRules.cacheKey != widget.group.customRules.cacheKey ||
         !_chunksMatch(oldWidget.chunks, widget.chunks)) {
       _feedController.controller.refresh();
       _mediaPaging?.pagingController.refresh();
@@ -346,7 +431,7 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
               TextButton(
                 child: Text(L10n.of(context).more_info),
                 onPressed: () async {
-                  await openUri("https://github.com/Teskann/Qui/issues/26");
+                  await openUri(context, "https://github.com/Teskann/QuaX/issues/26");
                   if (context.mounted) {
                     Navigator.of(context).pop();
                   }
@@ -507,7 +592,8 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
     var result = (await Future.wait(futures));
     var threads = _sortChains(dedupeChainsById(result.expand((element) => element).toList()));
     threads = filterHiddenRetweets(threads, await hiddenRetweetScreenNames());
-    threads = _applyContentFilter(threads);
+    threads = filterHiddenReplies(threads, await hiddenReplyScreenNames());
+    threads = applyCustomFeedRules(threads, widget.group.customRules);
 
     if (!mounted) {
       return (chains: <TweetChain>[], nextCursor: null);
@@ -530,25 +616,6 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
   }
 
   static int _likesOf(TweetChain chain) => chain.tweets.firstOrNull?.favoriteCount ?? 0;
-
-  static bool _isSensitive(TweetChain chain) =>
-      chain.tweets.any((tweet) => tweet.possiblySensitive == true);
-
-  /// Custom groups can restrict the feed to SFW-only or NSFW-only posts,
-  /// based on X's own sensitive-content flag.
-  List<TweetChain> _applyContentFilter(List<TweetChain> chains) {
-    if (!widget.group.custom) {
-      return chains;
-    }
-    switch (widget.group.contentFilter) {
-      case contentFilterSfw:
-        return chains.where((chain) => !_isSensitive(chain)).toList();
-      case contentFilterNsfw:
-        return chains.where(_isSensitive).toList();
-      default:
-        return chains;
-    }
-  }
 
   /// Popular groups order the same recent window by likes; recent ones (the
   /// default) by date.
@@ -596,24 +663,13 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
   }
 
   /// Loads a page for the media grid: same pages as the tweet list, mapped to
-  /// their media entries. Media posts can be sparse, so when a page maps to
-  /// nothing, look a few pages ahead before returning an empty page — which
-  /// the controller treats as the end of the feed.
+  /// their media entries.
   Future<CursorPage<String, MediaGridItem>> _loadMediaPage(String? cursor) async {
     if (cursor == null) {
       _seenMediaKeys.clear();
     }
 
-    var result = await _listTweets(cursor);
-    var items = _unseenMediaItems(result.chains);
-    var lookahead = 0;
-    while (items.isEmpty && result.chains.isNotEmpty && result.nextCursor != null && lookahead < 4) {
-      result = await _listTweets(result.nextCursor);
-      items = _unseenMediaItems(result.chains);
-      lookahead++;
-    }
-
-    return (items: items, nextCursor: result.nextCursor);
+    return mediaPageWithLookahead(cursor, _listTweets, _unseenMediaItems);
   }
 
   // Successive search windows overlap at their boundaries, so keep only media
@@ -639,7 +695,11 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.chunks.isEmpty) {
+    // A group is empty when it has nothing from *any* source. Testing only the
+    // X chunks meant a group of nothing but subreddits reported itself empty
+    // before its posts were ever asked for — the list below knows how to show
+    // interleaved items with no chains, but never got the chance.
+    if (widget.chunks.isEmpty && widget.publications.isEmpty && widget.subreddits.isEmpty) {
       return Scaffold(
         body: Center(
           child: Text(L10n.of(context).this_group_contains_no_subscriptions),
@@ -669,6 +729,7 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
             emptyMessage: L10n.of(context).could_not_find_any_tweets_from_the_last_7_days,
             isSeen: _tracksReadPosition && _lastSeen != null ? _isSeen : null,
             caughtUpDividerKey: _caughtUpKey,
+            interleaved: [..._substackItems, ..._redditItems],
           ),
         ),
       ),

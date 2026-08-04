@@ -1,4 +1,7 @@
+import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
+import 'package:pref/pref.dart';
+import 'package:qui/constants.dart';
 import 'package:qui/profile/profile.dart' show profileTabs;
 import 'package:url_launcher/url_launcher_string.dart';
 
@@ -14,6 +17,30 @@ const _trackingParams = {'fbclid', 'gclid', 'igshid', 'mc_eid', 'mkt_tok', 'twcl
 // where stripping them cannot change what the link points to.
 const _xTrackingParams = {'s', 't', 'ref_src', 'ref_url'};
 const _xHosts = {'x.com', 'www.x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com'};
+
+/// The article id in an `x.com/i/article/…` link, or null if it is not one.
+///
+/// A link to a long-form X post carries no title, no author and no thumbnail —
+/// nothing a preview could be built from — so it used to render as a truncated
+/// blue URL and nothing else. Recognising it at least lets the post say what
+/// the link is.
+String? articleIdIn(String? url) {
+  if (url == null || url.isEmpty) {
+    return null;
+  }
+
+  final uri = Uri.tryParse(url);
+  if (uri == null || !_xHosts.contains(uri.host)) {
+    return null;
+  }
+
+  final parts = uri.pathSegments.where((e) => e.isNotEmpty).toList(growable: false);
+  if (parts.length < 3 || parts[0] != 'i' || parts[1] != 'article') {
+    return null;
+  }
+
+  return parts[2];
+}
 
 bool _isTrackingParam(String key, bool isXHost) =>
     key.startsWith('utm_') || _trackingParams.contains(key) || (isXHost && _xTrackingParams.contains(key));
@@ -61,8 +88,17 @@ Future<void> openInDefaultBrowser(String url) async {
   await launchUrlString(cleaned, mode: LaunchMode.externalApplication);
 }
 
-Future<void> openUri(String uri) async {
-  await launchUrlString(cleanUrl(uri), mode: LaunchMode.externalApplication);
+/// Opens [uri] outside the feed: in an in-app browser view when the reader
+/// asked for that in settings, otherwise in their default browser.
+///
+/// Ported from upstream cb5927c2, keeping this fork's tracking-parameter
+/// stripping.
+Future<void> openUri(BuildContext context, String uri) async {
+  final embedded = PrefService.of(context, listen: false).get(optionOpenLinksInEmbeddedBrowser) == true;
+  await launchUrlString(
+    cleanUrl(uri),
+    mode: embedded ? LaunchMode.inAppBrowserView : LaunchMode.externalApplication,
+  );
 }
 
 sealed class UriParseResult {}

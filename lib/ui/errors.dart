@@ -15,20 +15,47 @@ import 'package:qui/utils/desktop_files.dart';
 import 'package:qui/constants.dart';
 import 'package:qui/generated/l10n.dart';
 
+/// Snackbar for work already under way, with a small spinner in place of an
+/// icon so a slow download does not look like a frozen one.
+///
+/// It stays put until the caller replaces it: the default few seconds would
+/// leave a long download with nothing on screen saying it was still going.
+///
+/// The spinner takes no colour, so it picks up the accent from whichever theme
+/// the snackbar is shown in.
+SnackBar workingSnackBar(String message) => SnackBar(
+      duration: const Duration(minutes: 2),
+      content: Row(
+        children: [
+          const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+          const SizedBox(width: 12),
+          Flexible(child: Text(message, style: const TextStyle(height: 1.5))),
+        ],
+      ),
+    );
+
+void showWorkingSnackBar(BuildContext context, String message) {
+  ScaffoldMessenger.of(context)
+    ..clearSnackBars()
+    ..showSnackBar(workingSnackBar(message));
+}
+
 void showSnackBar(BuildContext context, {required String icon, required String message, bool clearBefore = true}) {
   if (clearBefore) {
     ScaffoldMessenger.of(context).clearSnackBars();
   }
 
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Flexible(child: Text(message, style: const TextStyle(height: 1.5))),
-        Text(icon),
-      ],
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(child: Text(message, style: const TextStyle(height: 1.5))),
+          Text(icon),
+        ],
+      ),
     ),
-  ));
+  );
 }
 
 abstract class FritterErrorWidget extends StatelessWidget {
@@ -94,14 +121,15 @@ class EmojiErrorWidget extends FritterErrorWidget {
   final String? retryText;
   final bool showBackButton;
 
-  const EmojiErrorWidget(
-      {super.key,
-      required this.emoji,
-      required this.message,
-      required this.errorMessage,
-      this.onRetry,
-      this.retryText,
-      this.showBackButton = true});
+  const EmojiErrorWidget({
+    super.key,
+    required this.emoji,
+    required this.message,
+    required this.errorMessage,
+    this.onRetry,
+    this.retryText,
+    this.showBackButton = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -119,49 +147,52 @@ class EmojiErrorWidget extends FritterErrorWidget {
           Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
           Container(
             margin: const EdgeInsets.only(top: 12),
-            child:
-                Text(errorMessage, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).hintColor)),
+            child: Text(
+              errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Theme.of(context).hintColor),
+            ),
           ),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            if (showBackButton)
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                child: ElevatedButton(
-                  child: Text(L10n.of(context).back),
-                  onPressed: () {
-                    // Check if we can actually pop the last route, as we might have opened here directly from another app
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context);
-                      return;
-                    }
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (showBackButton)
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  child: ElevatedButton(
+                    child: Text(L10n.of(context).back),
+                    onPressed: () {
+                      // Check if we can actually pop the last route, as we might have opened here directly from another app
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                        return;
+                      }
 
-                    // If we're running on Android, close the app gracefully. Otherwise, return to the home screen
-                    if (Platform.isAndroid) {
-                      SystemNavigator.pop();
-                    } else {
-                      Navigator.pushReplacementNamed(context, routeHome);
-                    }
-                  },
+                      // If we're running on Android, close the app gracefully. Otherwise, return to the home screen
+                      if (Platform.isAndroid) {
+                        SystemNavigator.pop();
+                      } else {
+                        Navigator.pushReplacementNamed(context, routeHome);
+                      }
+                    },
+                  ),
                 ),
-              ),
-            if (onRetry != null) const SizedBox(width: 16),
-            if (onRetry != null)
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                child: AsyncButtonBuilder(
-                  showError: false,
-                  showSuccess: false,
-                  builder: (context, child, callback, buttonState) {
-                    return ElevatedButton(
-                      onPressed: callback,
-                      child: child,
-                    );
-                  },
-                  child: Text(retryText ?? L10n.current.retry),
-                  onPressed: () => onRetry(),
+              if (onRetry != null) const SizedBox(width: 16),
+              if (onRetry != null)
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  child: AsyncButtonBuilder(
+                    showError: false,
+                    showSuccess: false,
+                    builder: (context, child, callback, buttonState) {
+                      return ElevatedButton(onPressed: callback, child: child);
+                    },
+                    child: Text(retryText ?? L10n.current.retry),
+                    onPressed: () => onRetry(),
+                  ),
                 ),
-              )
-          ])
+            ],
+          ),
         ],
       ),
     );
@@ -176,8 +207,13 @@ class ActionableErrorWidget extends FritterErrorWidget {
   final String details;
   final List<Widget> actions;
 
-  const ActionableErrorWidget(
-      {super.key, required this.emoji, required this.title, required this.details, required this.actions});
+  const ActionableErrorWidget({
+    super.key,
+    required this.emoji,
+    required this.title,
+    required this.details,
+    required this.actions,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +230,11 @@ class ActionableErrorWidget extends FritterErrorWidget {
           Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
           Container(
             margin: const EdgeInsets.only(top: 12),
-            child: Text(details, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).hintColor)),
+            child: Text(
+              details,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Theme.of(context).hintColor),
+            ),
           ),
           Container(
             margin: const EdgeInsets.only(top: 12),
@@ -208,10 +248,17 @@ class ActionableErrorWidget extends FritterErrorWidget {
 
 /// Button that opens the X login flow to add another account.
 Widget addAccountButton(BuildContext context) => ElevatedButton.icon(
+<<<<<<< ours
       icon: const Icon(Icons.person_add),
       label: Text(L10n.of(context).add_account),
       onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => isDesktop ? const DesktopCookieLoginScreen() : const TwitterLoginWebview())),
     );
+=======
+  icon: const Icon(Icons.person_add),
+  label: Text(L10n.of(context).add_account),
+  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TwitterLoginWebview())),
+);
+>>>>>>> upstream
 
 class NoAccountErrorWidget extends FritterErrorWidget {
   final Function? onRetry;
@@ -226,8 +273,7 @@ class NoAccountErrorWidget extends FritterErrorWidget {
       details: L10n.of(context).no_account_available_message,
       actions: [
         addAccountButton(context),
-        if (onRetry != null)
-          TextButton(child: Text(L10n.of(context).retry), onPressed: () => onRetry!()),
+        if (onRetry != null) TextButton(child: Text(L10n.of(context).retry), onPressed: () => onRetry!()),
       ],
     );
   }
@@ -246,8 +292,7 @@ class RateLimitErrorWidget extends FritterErrorWidget {
       details: L10n.of(context).rate_limited_message,
       actions: [
         addAccountButton(context),
-        if (onRetry != null)
-          TextButton(child: Text(L10n.of(context).retry), onPressed: () => onRetry!()),
+        if (onRetry != null) TextButton(child: Text(L10n.of(context).retry), onPressed: () => onRetry!()),
       ],
     );
   }
@@ -266,9 +311,28 @@ class NoWorkingAccountErrorWidget extends FritterErrorWidget {
       details: L10n.of(context).no_working_account_message,
       actions: [
         addAccountButton(context),
-        if (onRetry != null)
-          TextButton(child: Text(L10n.of(context).retry), onPressed: () => onRetry!()),
+        if (onRetry != null) TextButton(child: Text(L10n.of(context).retry), onPressed: () => onRetry!()),
       ],
+    );
+  }
+}
+
+/// X refused the endpoint for every account. Deliberately does *not* offer to
+/// add an account: the whole point of this error is that the accounts are not
+/// the problem, and inviting the reader to add one sends them off to fix
+/// something that is not broken.
+class EndpointRefusedErrorWidget extends FritterErrorWidget {
+  final Function? onRetry;
+
+  const EndpointRefusedErrorWidget({super.key, this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionableErrorWidget(
+      emoji: '🚧',
+      title: L10n.of(context).endpoint_refused_title,
+      details: L10n.of(context).endpoint_refused_message,
+      actions: [if (onRetry != null) TextButton(child: Text(L10n.of(context).retry), onPressed: () => onRetry!())],
     );
   }
 }
@@ -289,7 +353,11 @@ class InlineErrorWidget extends FritterErrorWidget {
             margin: const EdgeInsets.only(right: 8),
             child: Icon(Icons.error_outline, color: Colors.red.harmonizeWith(Theme.of(context).colorScheme.primary)),
           ),
-          Text('$error', textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).hintColor)),
+          Text(
+            '$error',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Theme.of(context).hintColor),
+          ),
         ],
       ),
     );
@@ -318,15 +386,26 @@ class ScaffoldErrorWidget extends FritterErrorWidget {
   final Function? onRetry;
   final String? retryText;
 
-  const ScaffoldErrorWidget(
-      {super.key, required this.error, required this.stackTrace, required this.prefix, this.onRetry, this.retryText});
+  const ScaffoldErrorWidget({
+    super.key,
+    required this.error,
+    required this.stackTrace,
+    required this.prefix,
+    this.onRetry,
+    this.retryText,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
       body: FullPageErrorWidget(
-          error: error, prefix: prefix, stackTrace: stackTrace, onRetry: onRetry, retryText: retryText),
+        error: error,
+        prefix: prefix,
+        stackTrace: stackTrace,
+        onRetry: onRetry,
+        retryText: retryText,
+      ),
     );
   }
 }
@@ -338,8 +417,14 @@ class FullPageErrorWidget extends FritterErrorWidget {
   final Function? onRetry;
   final String? retryText;
 
-  const FullPageErrorWidget(
-      {super.key, required this.error, required this.stackTrace, required this.prefix, this.onRetry, this.retryText});
+  const FullPageErrorWidget({
+    super.key,
+    required this.error,
+    required this.stackTrace,
+    required this.prefix,
+    this.onRetry,
+    this.retryText,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -367,6 +452,10 @@ class FullPageErrorWidget extends FritterErrorWidget {
       return NoWorkingAccountErrorWidget(onRetry: onRetry);
     }
 
+    if (error is EndpointRefusedException) {
+      return EndpointRefusedErrorWidget(onRetry: onRetry);
+    }
+
     if (error is TwitterError) {
       return createEmojiError(error);
     }
@@ -391,8 +480,11 @@ class FullPageErrorWidget extends FritterErrorWidget {
           children: [
             Container(
               margin: const EdgeInsets.only(bottom: 16),
-              child: Icon(Icons.error_outline,
-                  color: Colors.red.harmonizeWith(Theme.of(context).colorScheme.primary), size: 36),
+              child: Icon(
+                Icons.error_outline,
+                color: Colors.red.harmonizeWith(Theme.of(context).colorScheme.primary),
+                size: 36,
+              ),
             ),
             Text(
               L10n.of(context).oops_something_went_wrong,
@@ -410,21 +502,26 @@ class FullPageErrorWidget extends FritterErrorWidget {
             Container(
               alignment: Alignment.center,
               margin: const EdgeInsets.only(top: 12),
-              child: Text('$error', textAlign: TextAlign.left, style: TextStyle(color: Theme.of(context).hintColor)),
+              child: Text(
+                '$error',
+                textAlign: TextAlign.left,
+                style: TextStyle(color: Theme.of(context).hintColor),
+              ),
             ),
             Container(
               alignment: Alignment.center,
               margin: const EdgeInsets.only(top: 12),
-              child: Text('$stackTrace', textAlign: TextAlign.left, style: TextStyle(color: Theme.of(context).hintColor)),
+              child: Text(
+                '$stackTrace',
+                textAlign: TextAlign.left,
+                style: TextStyle(color: Theme.of(context).hintColor),
+              ),
             ),
             if (onRetry != null)
               Container(
                 margin: const EdgeInsets.only(top: 12),
-                child: ElevatedButton(
-                  child: Text(retryText ?? L10n.current.retry),
-                  onPressed: () => onRetry(),
-                ),
-              )
+                child: ElevatedButton(child: Text(retryText ?? L10n.current.retry), onPressed: () => onRetry()),
+              ),
           ],
         ),
       ),

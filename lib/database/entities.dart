@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:qui/constants.dart';
+import 'package:qui/group/custom_feed_rules.dart';
 import 'package:qui/group/group_model.dart';
+import 'package:qui/subscriptions/group_mark_style.dart';
 import 'package:qui/user.dart';
 import 'package:intl/intl.dart';
 
@@ -219,6 +221,114 @@ class UserSubscription extends Subscription {
   }
 }
 
+/// A followed Substack publication.
+///
+/// A third kind of subscription beside users and saved searches, so that a
+/// group can hold one: group membership joins profile ids against subscription
+/// tables, and while publications lived in a preferences blob there was nothing
+/// for a group to join to.
+class SubstackSubscription extends Subscription {
+  /// Where the publication lives, e.g. `https://example.substack.com`.
+  final String baseUrl;
+
+  SubstackSubscription({
+    required super.id,
+    required this.baseUrl,
+    required super.name,
+    required String? logoUrl,
+    required super.createdAt,
+    required super.inFeed,
+  }) : super(screenName: id, verified: false, profileImageUrlHttps: logoUrl);
+
+  String? get logoUrl => profileImageUrlHttps;
+
+  factory SubstackSubscription.fromMap(Map<String, Object?> map) {
+    return SubstackSubscription(
+      id: map['id'] as String,
+      baseUrl: map['base_url'] as String,
+      name: map['name'] as String,
+      logoUrl: map['logo_url'] as String?,
+      createdAt: map['created_at'] == null ? DateTime.now() : DateTime.parse(map['created_at'] as String),
+      inFeed: map['in_feed'] == null || map['in_feed'] == 1,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is SubstackSubscription && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'base_url': baseUrl,
+      'name': name,
+      'logo_url': logoUrl,
+      'in_feed': inFeed ? 1 : 0,
+      'created_at': sqliteDateFormat.format(createdAt),
+    };
+  }
+}
+
+/// A followed subreddit.
+///
+/// A fourth kind of subscription, for the same reason publications became the
+/// third: a group joins profile ids against subscription tables, so anything
+/// that wants to be a member needs rows.
+class RedditSubscription extends Subscription {
+  RedditSubscription({
+    required super.id,
+    required super.name,
+    required super.createdAt,
+    required super.inFeed,
+  }) : super(screenName: id, verified: false, profileImageUrlHttps: null);
+
+  factory RedditSubscription.fromMap(Map<String, Object?> map) {
+    return RedditSubscription(
+      id: map['id'] as String,
+      name: map['name'] as String,
+      createdAt: map['created_at'] == null ? DateTime.now() : DateTime.parse(map['created_at'] as String),
+      inFeed: map['in_feed'] == null || map['in_feed'] == 1,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is RedditSubscription && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'in_feed': inFeed ? 1 : 0,
+      'created_at': sqliteDateFormat.format(createdAt),
+    };
+  }
+}
+
+/// One member shown in a group's avatar preview. [avatarUrl] is nullable: a
+/// member with no picture still appears, as a deterministic monogram keyed by
+/// [id].
+@immutable
+class GroupMemberPreview {
+  final String id;
+  final String name;
+  final String? avatarUrl;
+
+  /// Set when the member is a subreddit, whose picture is not a URL this app
+  /// holds — it is fetched and cached separately, and drawn from the name.
+  final String? subreddit;
+
+  const GroupMemberPreview({required this.id, required this.name, this.avatarUrl, this.subreddit});
+}
+
 class SubscriptionGroup with ToMappable {
   final String id;
   final String name;
@@ -226,6 +336,16 @@ class SubscriptionGroup with ToMappable {
   final Color? color;
   final int numberOfMembers;
   final DateTime createdAt;
+  final bool pinned;
+  final String? emoji;
+  final int markStyle;
+
+  /// The group this one sits inside, or null when it stands on its own.
+  final String? parentId;
+
+  // Not persisted: a few members for the tile's avatar preview, populated by
+  // GroupsModel.reloadGroups.
+  final List<GroupMemberPreview> memberPreviews;
 
   IconData get iconData => deserializeIconData(icon);
 
@@ -235,7 +355,25 @@ class SubscriptionGroup with ToMappable {
       required this.icon,
       required this.color,
       required this.numberOfMembers,
-      required this.createdAt});
+      required this.createdAt,
+      this.pinned = false,
+      this.emoji,
+      this.markStyle = 0,
+      this.parentId,
+      this.memberPreviews = const []});
+
+  SubscriptionGroup withMemberPreviews(List<GroupMemberPreview> previews) => SubscriptionGroup(
+      id: id,
+      name: name,
+      icon: icon,
+      color: color,
+      numberOfMembers: numberOfMembers,
+      createdAt: createdAt,
+      pinned: pinned,
+      emoji: emoji,
+      markStyle: markStyle,
+      parentId: parentId,
+      memberPreviews: previews);
 
   factory SubscriptionGroup.fromMap(Map<String, Object?> json) {
     // This is here to handle imports of data from before v2.15.0
@@ -250,12 +388,26 @@ class SubscriptionGroup with ToMappable {
         icon: icon,
         color: json['color'] == null ? null : Color(json['color'] as int),
         numberOfMembers: json['number_of_members'] == null ? 0 : json['number_of_members'] as int,
-        createdAt: DateTime.parse(json['created_at'] as String));
+        createdAt: DateTime.parse(json['created_at'] as String),
+        pinned: json['pinned'] == 1,
+        emoji: json['emoji'] as String?,
+        markStyle: GroupMarkStyle.coerce(json['mark_style']),
+        parentId: json['parent_id'] as String?);
   }
 
   @override
   Map<String, dynamic> toMap() {
-    return {'id': id, 'name': name, 'icon': icon, 'color': color?.toARGB32(), 'created_at': createdAt.toIso8601String()};
+    return {
+      'id': id,
+      'name': name,
+      'icon': icon,
+      'color': color?.toARGB32(),
+      'created_at': createdAt.toIso8601String(),
+      'pinned': pinned ? 1 : 0,
+      'emoji': emoji,
+      'mark_style': markStyle,
+      'parent_id': parentId,
+    };
   }
 }
 
@@ -277,6 +429,13 @@ class SubscriptionGroupGet {
   bool custom;
   String contentFilter;
 
+  /// Custom-feed thresholds; 0 means the threshold is off.
+  int minLikes;
+  int minRetweets;
+
+  /// Terms whose posts this feed hides.
+  List<String> mutedKeywords;
+
   SubscriptionGroupGet(
       {required this.id,
       required this.name,
@@ -286,7 +445,19 @@ class SubscriptionGroupGet {
       required this.includeRetweets,
       required this.popular,
       this.custom = false,
-      this.contentFilter = contentFilterDefault});
+      this.contentFilter = contentFilterDefault,
+      this.minLikes = 0,
+      this.minRetweets = 0,
+      this.mutedKeywords = const []});
+
+  CustomFeedRules get customRules => custom
+      ? CustomFeedRules(
+          contentFilter: contentFilter,
+          minLikes: minLikes,
+          minRetweets: minRetweets,
+          mutedKeywords: mutedKeywords,
+        )
+      : const CustomFeedRules();
 
   // Store updates must emit a new instance, otherwise listeners never see the
   // change (the store skips identical states) and dependent widgets go stale.
@@ -295,7 +466,10 @@ class SubscriptionGroupGet {
       Object? includeRetweets = _unset,
       bool? popular,
       bool? custom,
-      String? contentFilter}) {
+      String? contentFilter,
+      int? minLikes,
+      int? minRetweets,
+      List<String>? mutedKeywords}) {
     return SubscriptionGroupGet(
         id: id,
         name: name,
@@ -305,7 +479,10 @@ class SubscriptionGroupGet {
         includeRetweets: identical(includeRetweets, _unset) ? this.includeRetweets : includeRetweets as bool?,
         popular: popular ?? this.popular,
         custom: custom ?? this.custom,
-        contentFilter: contentFilter ?? this.contentFilter);
+        contentFilter: contentFilter ?? this.contentFilter,
+        minLikes: minLikes ?? this.minLikes,
+        minRetweets: minRetweets ?? this.minRetweets,
+        mutedKeywords: mutedKeywords ?? this.mutedKeywords);
   }
 }
 
@@ -315,9 +492,17 @@ class SubscriptionGroupEdit {
   String icon;
   Color? color;
   Set<String> members;
+  String? emoji;
+  int markStyle;
 
   SubscriptionGroupEdit(
-      {required this.id, required this.name, required this.icon, required this.color, required this.members});
+      {required this.id,
+      required this.name,
+      required this.icon,
+      required this.color,
+      required this.members,
+      this.emoji,
+      this.markStyle = GroupMarkStyle.auto});
 }
 
 class SubscriptionGroupMember with ToMappable {

@@ -9,6 +9,8 @@ import 'package:qui/search/search.dart';
 import 'package:qui/utils/urls.dart';
 import 'package:qui/utils/iterables.dart';
 import 'package:qui/utils/_entities.dart';
+import 'package:qui/tweet/ticker_screen.dart';
+import 'package:qui/plugins/plugin_links.dart';
 
 // RichText (not sure if it has an official name) is the way urls, mentions, hashtags... are integrated on
 // twitter content (tweets and descriptions).
@@ -159,6 +161,19 @@ List<Entity> _parseEntities(BuildContext context, dynamic newEntities) {
                   focusInputOnOpen: false, query: '#${hashtag.text}'))));
     }
 
+    // A ticker opens its own screen: the chart, and the posts about it.
+    for (final symbol in newEntities.symbols ?? []) {
+      final text = symbol.text;
+      if (text == null || text.isEmpty) {
+        continue;
+      }
+      entities.add(SymbolEntity(
+          text: text,
+          indices: symbol.indices,
+          onTap: () =>
+              Navigator.pushNamed(context, routeTicker, arguments: TickerScreenArguments(symbol: text))));
+    }
+
     for (UserMention mention in newEntities.userMentions ?? []) {
       entities.add(UserMentionEntity(
           mention,
@@ -178,7 +193,12 @@ List<Entity> _parseEntities(BuildContext context, dynamic newEntities) {
               uri.substring(0, 27) == 'https://x.com/i/web/status/')) {
         return;
       }
-      await openUri(uri);
+      // A plugin may be able to read this link in-app (Substack posts); only
+      // hand it to the browser when none claims it.
+      if (context.mounted && await openWithPlugins(context, uri)) {
+        return;
+      }
+      await openUri(context, uri);
     }));
   }
 

@@ -4,6 +4,7 @@ import 'package:qui/constants.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/group/group_model.dart';
 import 'package:qui/home/home_screen.dart';
+import 'package:qui/plugins/plugin_registry.dart';
 import 'package:qui/utils/iterables.dart';
 import 'package:pref/pref.dart';
 
@@ -37,31 +38,66 @@ class HomeModel extends Store<List<HomePage>> {
     await execute(() async {
       var saved = prefs.getStringList(optionHomePages) ?? [];
 
+      final pluginPages = <NavigationPage>[
+        for (final plugin in builtInPlugins)
+          if (plugin.isEnabled(prefs) && plugin.showsHomeTab(prefs))
+            NavigationPage(
+              plugin.id,
+              (c) => plugin.title(c),
+              Icon(plugin.icon),
+              Icon(plugin.icon),
+            ),
+      ];
+
       var available = [
         ...defaultHomePages,
+        ...pluginPages,
         ...groupsModel.state.map((e) =>
             NavigationPage('group-${e.id}', (c) => L10n.of(c).group_name(e.name), Icon(e.iconData), Icon(e.iconData))),
       ];
 
       var pages = <HomePage>[];
 
-      // First, add all of our saved pages, in the correct order
       for (var id in saved) {
         var page = available.firstWhereOrNull((e) => e.id == id);
         if (page == null) {
           continue;
         }
-
         pages.add(HomePage(id, true, page));
       }
 
-      // Then add all the other available pages, unselected, to the end of the list, for the settings screen
+      // Switching a plugin on should put its tab in the bar. Only Substack did
+      // that, so enabling any other plugin registered a tab and then left it
+      // hidden behind Settings > Home pages, looking like nothing had happened.
+      //
+      // Seeded once, and remembered: a tab the reader then removes has to stay
+      // removed rather than coming back on the next launch.
+      final seeded = prefs.getStringList(optionSeededPluginTabs) ?? const <String>[];
+      final newlySeeded = <String>[];
+
       for (var page in available) {
         if (saved.contains(page.id)) {
           continue;
         }
 
-        pages.add(HomePage(page.id, false, page));
+        // `available` only carries plugin pages for plugins that are enabled
+        // and want a tab, so being a plugin at all is enough here. Groups are
+        // deliberately excluded: they are not tabs the reader asked for.
+        final autoSelect = pluginById(page.id) != null && !seeded.contains(page.id);
+        if (autoSelect) {
+          newlySeeded.add(page.id);
+        }
+
+        pages.add(HomePage(page.id, autoSelect, page));
+      }
+
+      if (newlySeeded.isNotEmpty) {
+        await prefs.set(optionSeededPluginTabs, [...seeded, ...newlySeeded]);
+      }
+
+      final selectedIds = pages.where((e) => e.selected).map((e) => e.id).toList();
+      if (selectedIds.length != saved.length || !selectedIds.every(saved.contains)) {
+        await prefs.set(optionHomePages, selectedIds);
       }
 
       return pages;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:qui/client/headers.dart';
+import 'package:qui/client/http_client.dart';
 import 'dart:async';
 import 'package:qui/database/repository.dart';
 
@@ -10,18 +11,17 @@ class XRegularAccount extends ChangeNotifier {
 
   XRegularAccount() : super();
 
-  Future<http.Response> fetch(Uri uri,
-      {Map<String, String>? headers,
-      required Logger log,
-      required Map<dynamic, dynamic> authHeader}) async {
+  Future<http.Response> fetch(
+    Uri uri, {
+    Map<String, String>? headers,
+    required Logger log,
+    required Map<dynamic, dynamic> authHeader,
+  }) async {
     log.info('Fetching $uri');
 
     final baseHeaders = await TwitterHeaders.getHeaders(uri, authHeader);
 
-    var response = await http.get(uri, headers: {
-      ...?headers,
-      ...baseHeaders
-    });
+    var response = await xHttpClient.get(uri, headers: {...?headers, ...baseHeaders});
 
     return response;
   }

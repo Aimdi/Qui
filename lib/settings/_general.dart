@@ -5,6 +5,7 @@ import 'package:qui/generated/l10n.dart';
 import 'package:qui/home/_feed.dart';
 import 'package:qui/home/home_screen.dart';
 import 'package:qui/profile/profile.dart';
+import 'package:qui/settings/_crash_reports.dart';
 import 'package:qui/utils/iterables.dart';
 import 'package:logging/logging.dart';
 import 'package:pref/pref.dart';
@@ -94,6 +95,11 @@ class SettingsGeneralFragment extends StatelessWidget {
             pref: optionConfirmClose,
           ),
           PrefSwitch(
+            title: Text(L10n.of(context).option_open_links_in_embedded_browser_label),
+            subtitle: Text(L10n.of(context).option_open_links_in_embedded_browser_description),
+            pref: optionOpenLinksInEmbeddedBrowser,
+          ),
+          PrefSwitch(
             title: Text(L10n.of(context).disable_screenshots),
             subtitle: Text(L10n.of(context).disable_screenshots_hint),
             pref: optionDisableScreenshots,
@@ -115,7 +121,9 @@ class SettingsGeneralFragment extends StatelessWidget {
                 L10n.of(context).default_feed_tab_description,
               ),
               pref: optionHomeDefaultFeedTab,
-              items: feedTabs
+              // The same list the switcher shows, so a default cannot be set
+              // to a feed that is turned off.
+              items: availableFeedTabs(PrefService.of(context))
                   .map((e) => DropdownMenuItem(value: e.id.name, child: Text(e.titleBuilder(context))))
                   .toList()),
           PrefDropdown(
@@ -133,6 +141,8 @@ class SettingsGeneralFragment extends StatelessWidget {
             subtitle: Text(L10n.of(context).share_base_url_description),
             dialog: _createShareBaseDialog(context, prefs),
           ),
+          const Divider(),
+          const SettingsCrashReportsSection(),
         ]),
       ),
     );

@@ -1,0 +1,229 @@
+/// Reading a comment thread out of old.reddit.com's HTML.
+///
+/// Same reasoning as the listing scraper: the JSON is gone, the old site still
+/// renders threads to anyone, and the `data-*` attributes are the stable part.
+/// Nesting comes from the markup's own shape — each comment holds its replies
+/// in a `.child` block — so the tree is read recursively rather than guessed at
+/// from indentation.
+library;
+
+import 'package:html/dom.dart';
+import 'package:html/parser.dart' as html;
+import 'package:qui/plugins/reddit/reddit_media_urls.dart';
+
+/// One comment, with whatever replies hang off it.
+class RedditComment {
+  final String id;
+  final String? author;
+  final String body;
+
+  /// Null when Reddit is hiding the score, which it does for new comments.
+  final int? score;
+
+  /// Reddit's own wording — "4 hours ago" — rather than a parsed date. The page
+  /// gives a machine-readable timestamp too, and that is preferred; this is the
+  /// fallback when it is missing.
+  final DateTime? createdAt;
+
+  /// Marked by Reddit as the submitter of the post.
+  final bool isSubmitter;
+
+  /// Pictures and GIFs linked from the body, in the order they appear.
+  ///
+  /// Reddit has no comment-image markup on the old site — an image comment is a
+  /// link to `i.redd.it` — so they are picked out of the body rather than
+  /// arriving as their own field.
+  final List<String> mediaUrls;
+
+  final List<RedditComment> replies;
+
+  const RedditComment({
+    required this.id,
+    required this.body,
+    this.author,
+    this.score,
+    this.createdAt,
+    this.isSubmitter = false,
+    this.mediaUrls = const [],
+    this.replies = const [],
+  });
+
+  /// This comment and everything under it, which is what a flat list needs.
+  int get totalCount => 1 + replies.fold<int>(0, (sum, reply) => sum + reply.totalCount);
+}
+
+/// A comment flattened for display, keeping how deep it sat.
+typedef FlatComment = ({RedditComment comment, int depth});
+
+/// Walks a tree into the list a `ListView` can build, depth carried alongside
+/// so each row can be indented without nesting widgets inside widgets.
+List<FlatComment> flattenComments(List<RedditComment> comments, {int depth = 0}) {
+  final flat = <FlatComment>[];
+  for (final comment in comments) {
+    flat.add((comment: comment, depth: depth));
+    flat.addAll(flattenComments(comment.replies, depth: depth + 1));
+  }
+  return flat;
+}
+
+int? _score(Element entry) {
+  // "42 points", "1 point", or "" when Reddit is hiding it.
+  final text = entry.querySelector('.score.unvoted')?.text ?? entry.querySelector('.score')?.text;
+  if (text == null) {
+    return null;
+  }
+  final digits = RegExp(r'-?\d+').firstMatch(text.replaceAll(',', ''));
+  return digits == null ? null : int.tryParse(digits.group(0)!);
+}
+
+DateTime? _createdAt(Element entry) {
+  final raw = entry.querySelector('time')?.attributes['datetime'];
+  return raw == null ? null : DateTime.tryParse(raw)?.toLocal();
+}
+
+RedditComment? _commentFrom(Element thing) {
+  final fullname = thing.attributes['data-fullname'];
+  // `more` rows ("load 40 more comments") are controls, not comments.
+  if (fullname == null || !fullname.startsWith('t1_')) {
+    return null;
+  }
+
+  // Only this comment's own entry, never a reply's: `querySelector` searches
+  // the whole subtree, so the child block has to be excluded explicitly.
+  final entry = thing.children.firstWhere(
+    (e) => e.classes.contains('entry'),
+    orElse: () => Element.tag('div'),
+  );
+
+  final markdown = entry.querySelector('.usertext-body .md');
+  final media = _mediaIn(markdown);
+  final body = _bodyOf(markdown, media);
+
+  // A comment that is nothing but a picture is still a comment; only one with
+  // neither text nor media is a row worth skipping.
+  if (body.isEmpty && media.urls.isEmpty) {
+    return null;
+  }
+
+  return RedditComment(
+    id: fullname.substring(3),
+    author: thing.attributes['data-author'] ?? entry.querySelector('a.author')?.text.trim(),
+    body: body,
+    score: _score(entry),
+    createdAt: _createdAt(entry),
+    isSubmitter: entry.querySelector('.author.submitter') != null,
+    mediaUrls: media.urls,
+    replies: _repliesOf(thing),
+  );
+}
+
+/// The pictures a comment body carries, and the text that only announced them.
+///
+/// [tokens] are Reddit's own media markdown, which the old site prints raw.
+/// They are never words anybody meant to write, so they come out of the text
+/// whatever else it says.
+typedef _CommentMedia = ({List<String> urls, List<String> tokens});
+
+/// Every picture in a comment body, deduplicated, in order.
+///
+/// Three places carry one: an anchor (a link someone pasted), an `img` the old
+/// site inlined itself, and Reddit's `![gif](giphy|…)` token, which the old
+/// site renders as literal text and is otherwise the picture's only trace.
+_CommentMedia _mediaIn(Element? markdown) {
+  if (markdown == null) {
+    return (urls: const [], tokens: const []);
+  }
+
+  final urls = <String>[];
+  void add(String? url) {
+    if (url != null && !urls.contains(url)) {
+      urls.add(url);
+    }
+  }
+
+  for (final anchor in markdown.querySelectorAll('a[href]')) {
+    add(redditEmbeddableImage(anchor.attributes['href']));
+  }
+  for (final image in markdown.querySelectorAll('img[src]')) {
+    add(redditEmbeddableImage(_absolute(image.attributes['src'])));
+  }
+
+  final tokens = <String>[];
+  for (final match in redditMediaToken.allMatches(markdown.text)) {
+    tokens.add(match.group(0)!);
+    add(redditTokenImage(match));
+  }
+
+  return (urls: urls, tokens: tokens);
+}
+
+/// Reddit writes protocol-relative sources; the image loader needs a scheme.
+String? _absolute(String? src) => src != null && src.startsWith('//') ? 'https:$src' : src;
+
+/// The comment's words, with anything that was only an announcement removed.
+///
+/// A media token is always noise. A bare URL is not: an image comment reads
+/// `https://i.redd.it/x.gif` as its text and printing that above the picture is
+/// pointless, but prose that merely happens to contain a link keeps every word.
+String _bodyOf(Element? markdown, _CommentMedia media) {
+  var text = markdown?.text ?? '';
+  for (final token in media.tokens) {
+    text = text.replaceAll(token, '');
+  }
+  text = text.trim();
+
+  if (text.isEmpty || media.urls.isEmpty) {
+    return text;
+  }
+
+  var withoutLinks = text;
+  for (final url in media.urls) {
+    withoutLinks = withoutLinks.replaceAll(url, '');
+  }
+
+  return withoutLinks.trim().isEmpty ? '' : text;
+}
+
+/// The comments nested directly inside [thing].
+List<RedditComment> _repliesOf(Element thing) {
+  final child = thing.children.where((e) => e.classes.contains('child')).firstOrNull;
+  if (child == null) {
+    return const [];
+  }
+
+  final listing = child.children.where((e) => e.classes.contains('sitetable')).firstOrNull;
+  return listing == null ? const [] : _commentsIn(listing);
+}
+
+/// Direct comment children of a listing block, in order.
+List<RedditComment> _commentsIn(Element listing) {
+  final comments = <RedditComment>[];
+  for (final thing in listing.children.where((e) => e.classes.contains('thing'))) {
+    final comment = _commentFrom(thing);
+    if (comment != null) {
+      comments.add(comment);
+    }
+  }
+  return comments;
+}
+
+/// The comment tree of a post page.
+///
+/// An unreadable page yields no comments rather than throwing — the post itself
+/// is still worth showing.
+List<RedditComment> parseComments(String body) {
+  final document = html.parse(body);
+
+  final area = document.querySelector('.commentarea .sitetable') ?? document.querySelector('.nestedlisting');
+  return area == null ? const [] : _commentsIn(area);
+}
+
+/// The post's own text on a comment page, for a self post whose body the
+/// listing did not carry.
+String? parseSelfText(String body) {
+  final document = html.parse(body);
+  final text = document.querySelector('#siteTable .expando .usertext-body .md')?.text.trim() ??
+      document.querySelector('#siteTable .usertext-body .md')?.text.trim();
+
+  return text == null || text.isEmpty ? null : text;
+}

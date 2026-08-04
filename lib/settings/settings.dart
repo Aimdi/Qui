@@ -2,14 +2,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/settings/_about.dart';
+import 'package:qui/settings/_ai.dart';
 import 'package:qui/settings/_accessibility.dart';
 import 'package:qui/settings/_account.dart';
 import 'package:qui/settings/_data.dart';
 import 'package:qui/settings/_general.dart';
 import 'package:qui/settings/_home.dart';
 import 'package:qui/settings/_media.dart';
+import 'package:qui/settings/_plugin_store.dart';
 import 'package:qui/settings/_posts.dart';
 import 'package:qui/settings/_theme.dart';
+import 'package:qui/settings/diagnostics_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -51,7 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: Text(L10n.of(context).general),
             leading: Icon(Icons.miscellaneous_services),
             subtitle: Text(
-              "${L10n.of(context).language}, ${L10n.of(context).should_check_for_updates_label}, ${L10n.of(context).disable_screenshots}, ${L10n.of(context).default_tab}, ${L10n.of(context).share_base_url}",
+              "${L10n.of(context).language}, ${L10n.of(context).should_check_for_updates_label}, ${L10n.of(context).disable_screenshots}, ${L10n.of(context).default_tab}, ${L10n.of(context).share_base_url}, ${L10n.of(context).crash_reports_enabled}",
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontStyle: FontStyle.italic),
@@ -146,6 +149,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const SettingsAccessibilityFragment()),
+            ),
+          ),
+          ListTile(
+            title: Text(L10n.of(context).plugin_store),
+            leading: Icon(Icons.extension_outlined),
+            subtitle: Text(
+              L10n.of(context).plugin_store_description,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsPluginStoreFragment()),
+            ),
+          ),
+          ListTile(
+            title: Text(L10n.of(context).ai_provider),
+            leading: Icon(Icons.auto_awesome_outlined),
+            subtitle: Text(
+              L10n.of(context).ai_provider_description,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsAiFragment()),
+            ),
+          ),
+          ListTile(
+            title: Text(L10n.of(context).diagnostics),
+            leading: Icon(Icons.monitor_heart_outlined),
+            subtitle: Text(
+              L10n.of(context).diagnostics_description,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const DiagnosticsScreen()),
             ),
           ),
           Card(

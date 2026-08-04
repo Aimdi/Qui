@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:qui/client/client.dart';
 import 'package:qui/constants.dart';
+import 'package:qui/database/repository.dart';
+import 'package:qui/database/timeline_cache.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/profile/profile.dart';
 import 'package:qui/tweet/conversation.dart';
@@ -11,6 +13,7 @@ import 'package:pref/pref.dart';
 import 'package:provider/provider.dart';
 import 'package:qui/utils/paging.dart';
 import 'package:qui/utils/translation.dart';
+import 'package:logging/logging.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 
 /// Zen mode hides the replies under an opened post until the reader
@@ -91,12 +94,19 @@ class _StatusScreen extends StatefulWidget {
 }
 
 class _StatusScreenState extends State<_StatusScreen> {
+  static final log = Logger('StatusScreen');
+
   late final CursorPagingController<String, TweetChain> _paging;
   PagingController<int, TweetChain> get _pagingController => _paging.pagingController;
   final _scrollController = AutoScrollController();
 
   final _seenAlready = <String>{};
   bool _firstLoadStarted = false;
+
+  /// Set once paging ends while X is still withholding replies behind its
+  /// "Show additional replies" prompt. Held rather than followed: these are the
+  /// replies X judged low quality, so asking for them is the reader's call.
+  String? _showMoreCursor;
 
   @override
   void initState() {
@@ -169,8 +179,39 @@ class _StatusScreenState extends State<_StatusScreen> {
     });
   }
 
+  /// The first page of a thread, from cache when it is fresh enough.
+  ///
+  /// Re-opening a post is the commonest thing a reader does after scrolling,
+  /// and it cost a TweetDetail request every time. On a failure the cached copy
+  /// is used at any age: a thread the reader saw ten minutes ago beats an error
+  /// screen when the network is down or every account is rate limited.
+  Future<TweetStatus> _fetchFirstPage() async {
+    final key = TimelineCache.threadKey(widget.id);
+    final cache = TimelineCache(await Repository.writable());
+
+    // The thread screen has no pull-to-refresh, so nothing here has to bypass
+    // the cache; re-entering the screen after the window expires re-fetches.
+    final cached = await cache.read(key, maxAge: threadCacheMaxAge);
+    if (cached != null) {
+      return cached;
+    }
+
+    try {
+      final result = await Twitter.getTweet(widget.id);
+      await cache.write(key, result);
+      return result;
+    } catch (e) {
+      final stale = await cache.readStale(key);
+      if (stale == null) {
+        rethrow;
+      }
+      log.info('Showing the cached thread for ${widget.id} after $e');
+      return stale;
+    }
+  }
+
   Future<CursorPage<String, TweetChain>> _fetchPage(String? cursor) async {
-    var result = await Twitter.getTweet(widget.id, cursor: cursor);
+    var result = cursor == null ? await _fetchFirstPage() : await Twitter.getTweet(widget.id, cursor: cursor);
 
     // Cursor didn't advance on a later page -> nothing new, drop the page.
     if (cursor != null && result.cursorBottom == cursor) {
@@ -192,7 +233,42 @@ class _StatusScreenState extends State<_StatusScreen> {
     // No new tweets returned, or the cursor doesn't advance -> stop pagination.
     final next = result.cursorBottom;
     final stop = chains.isEmpty || next == null || next == cursor;
+
+    // Only offer the prompt where the thread actually ends, and never offer the
+    // cursor we just followed — otherwise the button reloads the same replies.
+    _showMoreCursor = stop && result.cursorShowMore != cursor ? result.cursorShowMore : null;
+
     return (items: chains, nextCursor: stop ? null : next);
+  }
+
+  void _loadWithheldReplies() {
+    final cursor = _showMoreCursor;
+    if (cursor == null) {
+      return;
+    }
+
+    setState(() => _showMoreCursor = null);
+    _paging.resume(cursor);
+  }
+
+  /// The end-of-thread prompt, shown only when X told us replies are withheld.
+  /// Absent that cursor this is nothing, so a thread that ends normally ends
+  /// silently, exactly as before.
+  Widget _showMoreIndicator(BuildContext context) {
+    if (_showMoreCursor == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      child: Center(
+        child: TextButton.icon(
+          onPressed: _loadWithheldReplies,
+          icon: const Icon(Icons.more_horiz),
+          label: Text(L10n.of(context).show_additional_replies),
+        ),
+      ),
+    );
   }
 
   @override
@@ -365,6 +441,7 @@ class _StatusScreenState extends State<_StatusScreen> {
             ),
           );
         },
+        noMoreItemsIndicatorBuilder: _showMoreIndicator,
       ),
     );
   }
@@ -427,6 +504,6 @@ class _StatusScreenState extends State<_StatusScreen> {
       });
       return const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()));
     }
-    return const SizedBox.shrink();
+    return _showMoreIndicator(context);
   }
 }

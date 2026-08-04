@@ -10,6 +10,7 @@ import 'package:qui/group/feed_refresh_controller.dart';
 import 'package:qui/group/group_model.dart';
 import 'package:qui/subscriptions/users_model.dart';
 import 'package:qui/ui/layout.dart';
+import 'package:qui/ui/scroll_to_top.dart';
 
 class GroupFeedShell extends StatefulWidget {
   final ScrollController scrollController;
@@ -78,7 +79,7 @@ class _GroupFeedShellState extends State<GroupFeedShell> with AutomaticKeepAlive
   // reload the open timeline.
   String _fingerprint(SubscriptionGroupGet group) {
     final members = group.subscriptions.map((s) => '${s.id}:${s.inFeed}').join(',');
-    return '$members|${group.includeReplies}|${group.includeRetweets}|${group.popular}|${group.custom}|${group.contentFilter}';
+    return '$members|${group.includeReplies}|${group.includeRetweets}|${group.popular}|${group.custom}|${group.customRules.cacheKey}';
   }
 
   // Triggered when subscriptions or group memberships change. A single user
@@ -205,12 +206,7 @@ List<Widget> defaultGroupActions(
     if (scrollToTopController != null)
       IconButton(
           icon: const Icon(Icons.arrow_upward),
-          onPressed: () async {
-            final disableAnimations = PrefService.of(context).get(optionDisableAnimations) == true;
-            await scrollToTopController.animateTo(0,
-                duration: disableAnimations ? Duration.zero : const Duration(seconds: 1),
-                curve: Curves.easeInOut);
-          }),
+          onPressed: () async => await scrollToTop(context, scrollToTopController)),
     if (showRefresh)
       IconButton(
           icon: const Icon(Icons.refresh_rounded),
