@@ -156,6 +156,8 @@ class _GroupTileState extends State<GroupTile> {
             behavior: HitTestBehavior.opaque,
             onTap: widget.onTap,
             onLongPress: widget.onLongPress,
+            // Desktop: right-click opens the same edit dialog as long-press.
+            onSecondaryTap: widget.onLongPress,
             onTapDown: widget.animate ? (_) => _setPressed(true) : null,
             onTapUp: widget.animate ? (_) => _setPressed(false) : null,
             onTapCancel: widget.animate ? () => _setPressed(false) : null,

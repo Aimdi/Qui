@@ -14,6 +14,7 @@ import 'package:qui/tweet/_photo.dart';
 import 'package:qui/tweet/_video.dart';
 import 'package:qui/tweet/tweet_chrome.dart';
 import 'package:qui/ui/errors.dart';
+import 'package:qui/ui/press_actions.dart';
 import 'package:qui/ui/x_look_theme.dart';
 import 'package:qui/utils/downloads.dart';
 import 'package:path/path.dart' as path;
@@ -238,7 +239,7 @@ class _TweetMediaState extends State<TweetMedia> {
                 // fullscreen media viewer. Photos and GIFs still open it.
                 final isVideo = item.type == 'video';
 
-                return GestureDetector(
+                return PressActions(
                   onTap: isVideo
                       ? null
                       : () => Navigator.push(
@@ -249,7 +250,7 @@ class _TweetMediaState extends State<TweetMedia> {
                                   media: widget.media,
                                   username: widget.username,
                                   tweetId: widget.tweetId))),
-                  onLongPress:
+                  onInvoke:
                       item.type == 'photo' ? () => downloadMediaItem(context, item, widget.username) : null,
                   child: _TweetMediaItem(
                       media: item,
@@ -430,7 +431,7 @@ class _TweetMediaViewState extends State<TweetMediaView> {
 
               final xfile = XFile(path, mimeType: 'image/jpeg');
 
-              Share.shareXFiles([xfile]).then((value) => file.delete());
+              SharePlus.instance.share(ShareParams(files: [xfile])).then((value) => file.delete());
             },
             child: const Icon(Icons.share),
           ),

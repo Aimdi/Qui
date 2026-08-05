@@ -65,7 +65,11 @@ class GroupListItem extends StatelessWidget {
         ThemeData.estimateBrightnessForColor(fill) == Brightness.dark ? Colors.white : Colors.black87;
     final hiddenMembers = group.numberOfMembers - group.memberPreviews.length;
 
-    return ListTile(
+    // Desktop: right-click opens the same edit dialog as long-press; ListTile
+    // has no secondary-tap slot of its own.
+    return GestureDetector(
+      onSecondaryTap: onLongPress,
+      child: ListTile(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       // Indent rather than hide: a nested group is still a group you can open.
       contentPadding: EdgeInsets.only(left: 16 + kGroupNestIndent * depth, right: 8),
@@ -98,6 +102,7 @@ class GroupListItem extends StatelessWidget {
       onTap: () => Navigator.pushNamed(context, routeGroup,
           arguments: GroupScreenArguments(id: group.id, name: group.name)),
       onLongPress: onLongPress,
+      ),
     );
   }
 }

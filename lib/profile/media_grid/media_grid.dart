@@ -7,6 +7,7 @@ import 'package:qui/constants.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/profile/media_grid/gif_playback_gate.dart';
 import 'package:qui/profile/media_grid/media_grid_items/media_grid_item.dart';
+import 'package:qui/ui/press_actions.dart';
 import 'package:qui/profile/media_grid/media_grid_lightbox.dart';
 import 'package:qui/ui/errors.dart';
 import 'package:qui/utils/paging.dart';
@@ -207,10 +208,10 @@ class _MediaGridTileState extends State<_MediaGridTile> {
 
     Widget body;
     if (_showMedia) {
-      body = GestureDetector(
+      body = PressActions(
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
-        onLongPress: widget.onLongPress,
+        onInvoke: widget.onLongPress,
         child: item is GifGridItem
             ? _GifGridCell(item: item, gate: widget.gifGate)
             : item.toWidget(context),

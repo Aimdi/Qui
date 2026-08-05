@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_triple/flutter_triple.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/trends/trends_model.dart';
+import 'package:qui/ui/press_actions.dart';
 import 'package:provider/provider.dart';
 
 class TrendsTabBar extends StatefulWidget implements PreferredSizeWidget {
@@ -96,8 +97,8 @@ class _LocationTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onLongPress: () async {
+    return PressActions(
+      onInvoke: () async {
         if (await removeTab(context, location)) {
           onDelete(location);
         }

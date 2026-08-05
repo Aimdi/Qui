@@ -17,6 +17,7 @@ import 'package:qui/saved/saved_tweet_model.dart';
 import 'package:qui/status.dart';
 import 'package:qui/tweet/_like_button.dart';
 import 'package:qui/tweet/quotes_screen.dart';
+import 'package:qui/ui/press_actions.dart';
 import 'package:qui/utils/urls.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:qui/plugins/karakeep/karakeep_save.dart';
@@ -295,20 +296,22 @@ class TweetFooterBar extends StatelessWidget {
                   L10n.of(sheetContext).share_tweet_content,
                   Icons.text_snippet,
                   () async {
-                    Share.share(shareableTweetText(tweet, tweetText));
+                    SharePlus.instance.share(ShareParams(text: shareableTweetText(tweet, tweetText)));
                     Navigator.pop(sheetContext);
                   },
                 ),
               createSheetButton(
                   isArticle ? L10n.of(sheetContext).share_article_link : L10n.of(sheetContext).share_tweet_link,
                   Icons.link, () async {
-                Share.share('$shareBaseUrl/${tweet.user!.screenName}/status/${tweet.idStr}');
+                SharePlus.instance
+                    .share(ShareParams(text: '$shareBaseUrl/${tweet.user!.screenName}/status/${tweet.idStr}'));
                 Navigator.pop(sheetContext);
               }),
               if (!isArticle)
                 createSheetButton(L10n.of(sheetContext).share_tweet_content_and_link, Icons.add_link, () async {
-                  Share.share(
-                      '${shareableTweetText(tweet, tweetText)}\n\n$shareBaseUrl/${tweet.user!.screenName}/status/${tweet.idStr}');
+                  SharePlus.instance.share(ShareParams(
+                      text:
+                          '${shareableTweetText(tweet, tweetText)}\n\n$shareBaseUrl/${tweet.user!.screenName}/status/${tweet.idStr}'));
                   Navigator.pop(sheetContext);
                 }),
               createSheetButton(
@@ -316,7 +319,7 @@ class TweetFooterBar extends StatelessWidget {
                   Icons.screenshot, () async {
                 final imgBytes = await onCaptureImage();
                 if (imgBytes != null) {
-                  Share.shareXFiles([XFile.fromData(imgBytes, mimeType: 'image/png')]);
+                  SharePlus.instance.share(ShareParams(files: [XFile.fromData(imgBytes, mimeType: 'image/png')]));
                 }
                 if (sheetContext.mounted) {
                   Navigator.pop(sheetContext);
@@ -389,8 +392,8 @@ class TweetFooterBar extends StatelessWidget {
         String label(String? value) => fit.showCounts ? (value ?? '') : '';
 
         final actions = <Widget>[
-          GestureDetector(
-            onLongPress: () {
+          PressActions(
+            onInvoke: () {
               try {
                 context.read<ZenRepliesState>().reveal();
               } catch (_) {
@@ -447,8 +450,8 @@ class TweetFooterBar extends StatelessWidget {
                     }
                   }, L10n.of(context).action_save_post);
 
-            return GestureDetector(
-              onLongPress: () async {
+            return PressActions(
+              onInvoke: () async {
                 await showSaveToFolderSheet(context,
                     tweetId: tweet.idStr!, userId: tweet.user?.idStr, content: tweet.toJson());
                 onChanged();

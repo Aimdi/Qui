@@ -1,17 +1,24 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:qui/home/home_screen.dart';
 import 'package:qui/ui/layout.dart';
 
-/// Horizontal multi-column body used by deck mode (Flare / TweetDeck style).
+/// Multi-column body used by deck mode (Flare / TweetDeck style).
 ///
-/// Each selected home tab is a fixed-width column. Tapping the rail scrolls
-/// the deck so that column is visible and focused.
+/// Each selected home tab is a fixed-width column. With [rows] == 1 the columns
+/// form a single horizontal strip; with [rows] > 1 they wrap into that many
+/// stacked, independently-scrolling rows (a grid). Tapping the rail scrolls the
+/// column into view and focuses it.
 class DeckBody extends StatefulWidget {
   final List<NavigationPage> pages;
   final List<Widget> children;
   final int focusedIndex;
   final ValueChanged<int> onFocusChanged;
   final ScrollController? scrollController;
+
+  /// Number of stacked rows the columns wrap into (clamped to 1..4).
+  final int rows;
 
   const DeckBody({
     super.key,
@@ -20,6 +27,7 @@ class DeckBody extends StatefulWidget {
     required this.focusedIndex,
     required this.onFocusChanged,
     this.scrollController,
+    this.rows = 1,
   });
 
   @override
@@ -27,10 +35,22 @@ class DeckBody extends StatefulWidget {
 }
 
 class DeckBodyState extends State<DeckBody> {
+  // Single-row scroll controller (rows == 1), possibly provided by the shell.
   late ScrollController _scrollController;
   bool _ownedController = false;
+  // One controller per row when rows > 1.
+  final List<ScrollController> _rowControllers = [];
 
   double get _extent => quiDeckColumnWidth + 1; // column + divider
+
+  int get _rows => widget.rows.clamp(1, 4);
+
+  // Columns per row (ceil), so rows fill left-to-right, top-to-bottom.
+  int get _perRow {
+    final n = widget.children.length;
+    if (_rows <= 1 || n == 0) return n;
+    return (n + _rows - 1) ~/ _rows;
+  }
 
   @override
   void initState() {
@@ -41,33 +61,63 @@ class DeckBodyState extends State<DeckBody> {
       _scrollController = ScrollController();
       _ownedController = true;
     }
+    _ensureRowControllers();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       scrollToIndex(widget.focusedIndex, animate: false);
     });
   }
 
+  void _ensureRowControllers() {
+    final needed = _rows <= 1 ? 0 : _rows;
+    if (_rowControllers.length == needed) return;
+    for (final c in _rowControllers) {
+      c.dispose();
+    }
+    _rowControllers
+      ..clear()
+      ..addAll(List.generate(needed, (_) => ScrollController()));
+  }
+
   @override
   void didUpdateWidget(covariant DeckBody oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.focusedIndex != widget.focusedIndex) {
+    final layoutChanged = oldWidget.rows != widget.rows ||
+        oldWidget.children.length != widget.children.length;
+    if (layoutChanged) {
+      _ensureRowControllers();
+      // Controllers/strips only attach next frame; scroll once they exist.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) scrollToIndex(widget.focusedIndex, animate: false);
+      });
+    } else if (oldWidget.focusedIndex != widget.focusedIndex) {
       scrollToIndex(widget.focusedIndex);
     }
   }
 
   /// Bring [index] into view (rail navigation).
   void scrollToIndex(int index, {bool animate = true}) {
-    if (!_scrollController.hasClients) return;
     if (widget.children.isEmpty) return;
-    final max = _scrollController.position.maxScrollExtent;
-    final target = (index * _extent).clamp(0.0, max);
+
+    if (_rows <= 1) {
+      _scrollController_scrollTo(_scrollController, index * _extent, animate);
+      return;
+    }
+
+    final perRow = _perRow;
+    if (perRow <= 0) return;
+    final row = (index ~/ perRow).clamp(0, _rowControllers.length - 1);
+    final local = index % perRow;
+    _scrollController_scrollTo(_rowControllers[row], local * _extent, animate);
+  }
+
+  void _scrollController_scrollTo(ScrollController controller, double raw, bool animate) {
+    if (!controller.hasClients) return;
+    final target = raw.clamp(0.0, controller.position.maxScrollExtent);
     if (animate) {
-      _scrollController.animateTo(
-        target,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-      );
+      controller.animateTo(target,
+          duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
     } else {
-      _scrollController.jumpTo(target);
+      controller.jumpTo(target);
     }
   }
 
@@ -85,14 +135,45 @@ class DeckBodyState extends State<DeckBody> {
     if (_ownedController) {
       _scrollController.dispose();
     }
+    for (final c in _rowControllers) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  Widget _buildColumn(BuildContext context, int index) {
+    final scheme = Theme.of(context).colorScheme;
+    final page = widget.pages[index];
+    final focused = index == widget.focusedIndex;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          right: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.45),
+            width: 1,
+          ),
+        ),
+      ),
+      child: SizedBox(
+        width: quiDeckColumnWidth,
+        child: DeckColumn(
+          title: page.titleBuilder(context),
+          icon: focused ? page.selectedIcon : page.icon,
+          focused: focused,
+          child: widget.children[index],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     assert(widget.pages.length == widget.children.length);
+    if (_rows <= 1) return _buildSingleRow(context);
+    return _buildGrid(context);
+  }
 
+  Widget _buildSingleRow(BuildContext context) {
     return NotificationListener<ScrollNotification>(
       onNotification: (n) {
         if (n is ScrollUpdateNotification && n.metrics.axis == Axis.horizontal) {
@@ -106,31 +187,37 @@ class DeckBodyState extends State<DeckBody> {
         // Keep all columns alive so feeds keep their scroll position / cache.
         itemCount: widget.children.length,
         itemExtent: _extent,
-        itemBuilder: (context, index) {
-          final page = widget.pages[index];
-          final focused = index == widget.focusedIndex;
-          return DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border(
-                right: BorderSide(
-                  color: scheme.outlineVariant.withValues(alpha: 0.45),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: SizedBox(
-              width: quiDeckColumnWidth,
-              child: DeckColumn(
-                title: page.titleBuilder(context),
-                icon: focused ? page.selectedIcon : page.icon,
-                focused: focused,
-                child: widget.children[index],
-              ),
-            ),
-          );
-        },
+        itemBuilder: (context, index) => _buildColumn(context, index),
       ),
     );
+  }
+
+  Widget _buildGrid(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final perRow = _perRow;
+    final n = widget.children.length;
+
+    final strips = <Widget>[];
+    for (var r = 0; r < _rows; r++) {
+      final start = r * perRow;
+      if (start >= n) break;
+      final end = min(start + perRow, n);
+      if (strips.isNotEmpty) {
+        strips.add(Divider(
+            height: 1, thickness: 1, color: scheme.outlineVariant.withValues(alpha: 0.45)));
+      }
+      strips.add(Expanded(
+        child: ListView.builder(
+          controller: _rowControllers[r],
+          scrollDirection: Axis.horizontal,
+          itemCount: end - start,
+          itemExtent: _extent,
+          itemBuilder: (context, i) => _buildColumn(context, start + i),
+        ),
+      ));
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: strips);
   }
 }
 
