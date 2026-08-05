@@ -6,7 +6,7 @@
 #   sudo pacman -U qui-0.1.0-1-x86_64.pkg.tar.zst
 
 pkgname=qui
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
 pkgdesc="Privacy-focused X (Twitter) client for Linux desktop (Flutter; based on QuaX-fix)"
 arch=('x86_64')
