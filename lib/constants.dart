@@ -89,8 +89,8 @@ const optionShouldCheckForUpdates = 'should_check_for_updates';
 /// default — which is not the installs that were being interrupted.
 const optionUpdateCheckReset = 'should_check_for_updates.reset';
 // This fork's own repository. Releases and crash reports belong here, not on
-// upstream teskann/quax, whose versions this fork never matches.
-const githubRepo = 'Aimdi/QuaX-fix';
+// upstream Aimdi/QuaX-fix, whose versions this desktop port never matches.
+const githubRepo = 'Aimdi/Qui';
 const optionConfirmClose = 'confirm_close';
 const optionOpenLinksInEmbeddedBrowser = 'open_links_in_embedded_browser';
 const optionShareBaseUrl = 'share_base_url';
@@ -281,7 +281,7 @@ const optionEndpointRegistryUrl = 'api.endpoint_registry.url';
 const optionEndpointRegistryCache = 'api.endpoint_registry.cache';
 const optionEndpointRegistryFetchedAt = 'api.endpoint_registry.fetched_at';
 const defaultEndpointRegistryUrl =
-    'https://raw.githubusercontent.com/$githubRepo/master/endpoints.json';
+    'https://raw.githubusercontent.com/$githubRepo/main/endpoints.json';
 const Duration endpointRegistryTimeout = Duration(seconds: 10);
 
 // Offline read cache for threads and profile timelines (feed_group_chunk covers
@@ -311,4 +311,3 @@ const routeSettingsHome = '/settings/home';
 const routeQuotes = '/quotes';
 const routeTicker = '/ticker';
 const routeStatus = '/status';
-const routeSubstackArticle = '/substack/article';

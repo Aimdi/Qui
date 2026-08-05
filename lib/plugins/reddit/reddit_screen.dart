@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:qui/constants.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/plugins/reddit/reddit_auth.dart';
+import 'package:qui/plugins/reddit/reddit_login_desktop.dart';
 import 'package:qui/plugins/reddit/reddit_login_webview.dart';
 import 'package:qui/plugins/reddit/reddit_client.dart';
 import 'package:qui/plugins/reddit/reddit_feed_list.dart';
@@ -13,6 +14,7 @@ import 'package:qui/plugins/reddit/reddit_sort_sheet.dart';
 import 'package:qui/plugins/reddit/reddit_store.dart';
 import 'package:qui/subscriptions/users_model.dart';
 import 'package:qui/ui/errors.dart';
+import 'package:qui/utils/desktop_files.dart';
 
 String redditErrorMessage(L10n l10n, Object error) {
   if (error is RedditException) {
@@ -182,9 +184,17 @@ class _RedditScreenState extends State<RedditScreen> {
     // Echoed back by Reddit and checked on return, so a code from anywhere
     // else is refused.
     final state = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+    // webview_flutter has no Linux/Windows implementation, so desktop opens
+    // the system browser and takes the redirect back by paste instead. Both
+    // screens pop the same authorization code, so everything after this line
+    // is shared.
     final code = await Navigator.push<String>(
       context,
-      MaterialPageRoute(builder: (_) => RedditLoginWebview(clientId: clientId, state: state)),
+      MaterialPageRoute(
+        builder: (_) => isDesktop
+            ? RedditLoginDesktop(clientId: clientId, state: state)
+            : RedditLoginWebview(clientId: clientId, state: state),
+      ),
     );
 
     if (code == null || !mounted) return;

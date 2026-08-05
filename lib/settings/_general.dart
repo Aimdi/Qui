@@ -6,6 +6,7 @@ import 'package:qui/home/_feed.dart';
 import 'package:qui/home/home_screen.dart';
 import 'package:qui/profile/profile.dart';
 import 'package:qui/settings/_crash_reports.dart';
+import 'package:qui/utils/desktop_files.dart';
 import 'package:qui/utils/iterables.dart';
 import 'package:logging/logging.dart';
 import 'package:pref/pref.dart';
@@ -94,16 +95,22 @@ class SettingsGeneralFragment extends StatelessWidget {
             subtitle: Text(L10n.of(context).option_confirm_close_description),
             pref: optionConfirmClose,
           ),
-          PrefSwitch(
-            title: Text(L10n.of(context).option_open_links_in_embedded_browser_label),
-            subtitle: Text(L10n.of(context).option_open_links_in_embedded_browser_description),
-            pref: optionOpenLinksInEmbeddedBrowser,
-          ),
-          PrefSwitch(
-            title: Text(L10n.of(context).disable_screenshots),
-            subtitle: Text(L10n.of(context).disable_screenshots_hint),
-            pref: optionDisableScreenshots,
-          ),
+          // The embedded browser view only exists on mobile; on desktop the
+          // switch is hidden and links always open in the system browser.
+          if (!isDesktop)
+            PrefSwitch(
+              title: Text(L10n.of(context).option_open_links_in_embedded_browser_label),
+              subtitle: Text(L10n.of(context).option_open_links_in_embedded_browser_description),
+              pref: optionOpenLinksInEmbeddedBrowser,
+            ),
+          // secure_content only implements Android/iOS, so on desktop this
+          // switch would silently do nothing; hide it there.
+          if (!isDesktop)
+            PrefSwitch(
+              title: Text(L10n.of(context).disable_screenshots),
+              subtitle: Text(L10n.of(context).disable_screenshots_hint),
+              pref: optionDisableScreenshots,
+            ),
           PrefDropdown(
               fullWidth: false,
               title: Text(L10n.of(context).default_tab),

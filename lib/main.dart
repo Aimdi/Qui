@@ -43,8 +43,6 @@ import 'package:qui/settings/settings.dart';
 import 'package:qui/settings/settings_export_screen.dart';
 import 'package:qui/status.dart';
 import 'package:qui/tweet/quotes_screen.dart';
-import 'package:qui/substack/substack_article_screen.dart';
-import 'package:qui/substack/substack_model.dart';
 import 'package:qui/tweet/ticker_screen.dart';
 import 'package:qui/subscriptions/_import_list.dart';
 import 'package:qui/subscriptions/users_model.dart';
@@ -431,9 +429,6 @@ Future<void> main() async {
 
     var trendLocationModel = UserTrendLocationModel(prefService);
 
-    var substackModel = SubstackModel();
-    await substackModel.reload();
-
     final deepmarksClient = DeepmarksClient();
     final karakeepClient = KarakeepClient();
     final redditClient = RedditClient();
@@ -491,7 +486,6 @@ Future<void> main() async {
             Provider(create: (context) => trendLocationModel),
             Provider(create: (context) => TrendLocationsModel()),
             Provider(create: (context) => TrendsModel(trendLocationModel)),
-            Provider(create: (context) => substackModel),
             Provider(create: (_) => deepmarksClient),
             Provider(create: (_) => karakeepClient),
             Provider(create: (_) => redditClient),
@@ -666,137 +660,10 @@ class _QuiAppState extends State<QuiApp> {
     final systemScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
 
     return MediaQuery(
-<<<<<<< ours
-        data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.linear(_textScaleFactor * systemScaleFactor),
-        ),
-        child: DynamicColorBuilder(builder: (lightDynamic, darkDynamic) {
-          final materialApp = MaterialApp(
-                        navigatorKey: _navigatorKey,
-                        localizationsDelegates: const [
-                          L10n.delegate,
-                          GlobalMaterialLocalizations.delegate,
-                          GlobalWidgetsLocalizations.delegate,
-                          GlobalCupertinoLocalizations.delegate,
-                        ],
-                        supportedLocales: L10n.delegate.supportedLocales,
-                        locale: _locale,
-                        title: 'Qui',
-                        theme: _themePreset == themePresetFairyForest
-                            ? fairyForestTheme(pageTransitions)
-                            : ThemeData(
-                          colorScheme: _themeColor == 'accent'
-                              ? lightDynamic
-                              : ColorScheme.fromSeed(
-                                  seedColor: themeColors[_themeColor]!
-                                      .harmonizeWith(lightDynamic?.primary ?? Colors.transparent),
-                                  brightness: Brightness.light),
-                          pageTransitionsTheme: _disableAnimations == true
-                              ? PageTransitionsTheme(
-                                  builders: {
-                                    TargetPlatform.android: NoAnimationPageTransitionsBuilder(),
-                                    TargetPlatform.iOS: NoAnimationPageTransitionsBuilder(),
-                                  },
-                                )
-                              : null,
-                          useMaterial3: true,
-                        ),
-                        darkTheme: _themePreset == themePresetPitchBlack
-                            ? pitchBlackTheme(pageTransitions)
-                            : ThemeData(
-                          colorScheme: (_trueBlack == true
-                              ? (_themeColor == 'accent'
-                                      ? darkDynamic
-                                      : ColorScheme.fromSeed(
-                                          seedColor: themeColors[_themeColor]!
-                                              .harmonizeWith(darkDynamic?.primary ?? Colors.transparent),
-                                          brightness: Brightness.dark))
-                                  ?.copyWith(surface: Colors.black)
-                              : (_themeColor == 'accent'
-                                  ? darkDynamic
-                                  : ColorScheme.fromSeed(
-                                      seedColor: themeColors[_themeColor]!
-                                          .harmonizeWith(darkDynamic?.primary ?? Colors.transparent),
-                                      brightness: Brightness.dark))),
-                          navigationBarTheme:
-                              (_trueBlack == true ? NavigationBarThemeData(backgroundColor: Colors.black) : null),
-                          scaffoldBackgroundColor: (_trueBlack == true ? Colors.black : null),
-                          appBarTheme: (_trueBlack == true ? AppBarThemeData(backgroundColor: Colors.black) : null),
-                          pageTransitionsTheme: _disableAnimations == true
-                              ? PageTransitionsTheme(
-                                  builders: {
-                                    TargetPlatform.android: NoAnimationPageTransitionsBuilder(),
-                                    TargetPlatform.iOS: NoAnimationPageTransitionsBuilder(),
-                                  },
-                                )
-                              : null,
-                          useMaterial3: true,
-                        ),
-                        themeMode: _themePreset == themePresetFairyForest
-                            ? ThemeMode.light
-                            : _themePreset == themePresetPitchBlack
-                                ? ThemeMode.dark
-                                : themeMode,
-                        initialRoute: '/',
-                        routes: {
-                          routeHome: (context) => const DefaultPage(),
-                          routeGroup: (context) => const GroupScreen(),
-                          routeProfile: (context) => const ProfileScreen(),
-                          routeSearch: (context) => const ResultsScreen(),
-                          routeSavedFolders: (context) => const SavedFoldersScreen(),
-                          routeSettings: (context) => const SettingsScreen(),
-                          routeSettingsExport: (context) => const SettingsExportScreen(),
-                          routeSettingsHome: (context) => const SettingsHomeFragment(),
-                          routeQuotes: (context) => const QuotesScreen(),
-                          routeStatus: (context) => const StatusScreen(),
-                          routeSubstackArticle: (context) => const SubstackArticleScreen(),
-                        },
-                        builder: (context, child) {
-                          if (_checkUpdates && !_updateDialogShown) {
-                            _updateDialogShown = true;
-                            // Use navigatorKey's context for showDialog
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              checkForUpdates(_navigatorKey.currentContext!);
-                            });
-                          }
-
-                          if (!_accountDialogShown) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              _accountDialogShown = true;
-                              checkForAccounts(_navigatorKey.currentContext!);
-                            });
-                          }
-
-                          // Replace the default red screen of death with a slightly friendlier one
-                          ErrorWidget.builder = (FlutterErrorDetails details) => FullPageErrorWidget(
-                                error: details.exception,
-                                stackTrace: details.stack,
-                                prefix: L10n.of(context).something_broke_in_fritter,
-                              );
-
-                          return child ?? Container();
-                        },
-                      );
-
-          final isMobile = Platform.isAndroid || Platform.isIOS;
-          if (isMobile) {
-            return Portal(
-              child: SecureWidget(
-                isSecure: _isSecure,
-                builder: (BuildContext context, a, b) => materialApp,
-              ),
-            );
-          }
-          return Portal(child: materialApp);
-        }));
-=======
       data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(_textScaleFactor * systemScaleFactor)),
       child: DynamicColorBuilder(
         builder: (lightDynamic, darkDynamic) {
-          return Portal(
-            child: SecureWidget(
-              isSecure: _isSecure,
-              builder: (BuildContext context, a, b) => MaterialApp(
+          final materialApp = MaterialApp(
                 navigatorKey: _navigatorKey,
                 localizationsDelegates: const [
                   L10n.delegate,
@@ -806,7 +673,7 @@ class _QuiAppState extends State<QuiApp> {
                 ],
                 supportedLocales: L10n.delegate.supportedLocales,
                 locale: _locale,
-                title: 'QuaX',
+                title: 'Qui',
                 theme: xLookThemeData(xLookTokensFor(xLookBackgroundLight, _xLookAccent), pageTransitions),
                 darkTheme: xLookThemeData(xLookDarkTokensFor(_xLookBackground, _xLookAccent), pageTransitions),
                 themeMode: xLookThemeModeFor(_xLookBackground),
@@ -849,13 +716,23 @@ class _QuiAppState extends State<QuiApp> {
 
                   return child ?? Container();
                 },
+              );
+
+          // secure_content only implements Android/iOS; on desktop the
+          // screenshot guard is skipped and the app renders directly.
+          final isMobile = Platform.isAndroid || Platform.isIOS;
+          if (isMobile) {
+            return Portal(
+              child: SecureWidget(
+                isSecure: _isSecure,
+                builder: (BuildContext context, a, b) => materialApp,
               ),
-            ),
-          );
+            );
+          }
+          return Portal(child: materialApp);
         },
       ),
     );
->>>>>>> upstream
   }
 }
 
@@ -903,11 +780,7 @@ class _DefaultPageState extends State<DefaultPage> {
               actions: [
                 TextButton(
                   child: Text(L10n.of(context).report),
-<<<<<<< ours
-                  onPressed:  () => openUri('https://github.com/teskann/qui/issues'),
-=======
-                  onPressed: () => openUri(context, 'https://github.com/teskann/quax/issues'),
->>>>>>> upstream
+                  onPressed: () => openUri(context, 'https://github.com/$githubRepo/issues'),
                 ),
                 TextButton(
                   child: Text(L10n.of(context).open_in_browser),

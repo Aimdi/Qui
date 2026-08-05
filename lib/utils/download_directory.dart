@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
@@ -11,18 +13,35 @@ import 'package:path/path.dart' as p;
 /// to it, which is why saving used to fail with
 /// `PathAccessException … Operation not permitted, errno = 1` no matter which
 /// permissions were granted. A document tree carries the grant with it.
+///
+/// Android-only: the `browser_resolver` channel is implemented by the Android
+/// embedding alone. Desktop uses a plain directory path (`optionDownloadPath`)
+/// picked via `pickDirectoryPath` in `desktop_files.dart` and never calls this.
 class DownloadDirectory {
   static const MethodChannel _channel = MethodChannel('browser_resolver');
+
+  /// Lets tests exercise the channel calls on a host platform; the guards
+  /// otherwise short-circuit everywhere the Android embedding is absent.
+  @visibleForTesting
+  static bool debugTreatAsAndroid = false;
+
+  static bool get _isAndroid => debugTreatAsAndroid || Platform.isAndroid;
 
   /// Opens the system folder picker and keeps write access to the result.
   /// Returns the tree URI, or null when the user backed out.
   static Future<String?> pick() async {
+    if (!_isAndroid) {
+      return null;
+    }
     return _channel.invokeMethod<String>('pickDownloadDirectory');
   }
 
   /// Whether [treeUri] is still writable — the folder can be deleted, or the
   /// grant revoked, long after it was chosen.
   static Future<bool> hasAccess(String? treeUri) async {
+    if (!_isAndroid) {
+      return false;
+    }
     if (treeUri == null || treeUri.isEmpty) {
       return false;
     }
@@ -36,6 +55,9 @@ class DownloadDirectory {
     required String fileName,
     required Uint8List bytes,
   }) async {
+    if (!_isAndroid) {
+      throw UnsupportedError('SAF document trees only exist on Android; write to a filesystem path instead');
+    }
     return _channel.invokeMethod<String>('saveToDownloadDirectory', {
       'treeUri': treeUri,
       'fileName': fileName,

@@ -1,7 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:qui/article/entities/entity_value.dart';
-import 'package:qui/substack/substack_html_parser.dart';
+import 'package:qui/plugins/substack/substack_html_parser.dart';
 import 'package:qui/utils/urls.dart';
 
 /// Renders a parsed Substack article body, styled to match the X long-form
@@ -49,7 +49,7 @@ class SubstackHtmlView extends StatelessWidget {
     return TextSpan(
       text: inline.text,
       style: style,
-      recognizer: linkUrl == null ? null : (TapGestureRecognizer()..onTap = () => openUri(linkUrl)),
+      recognizer: linkUrl == null ? null : (TapGestureRecognizer()..onTap = () => openUri(context, linkUrl)),
     );
   }
 

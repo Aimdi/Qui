@@ -248,17 +248,15 @@ class ActionableErrorWidget extends FritterErrorWidget {
 
 /// Button that opens the X login flow to add another account.
 Widget addAccountButton(BuildContext context) => ElevatedButton.icon(
-<<<<<<< ours
-      icon: const Icon(Icons.person_add),
-      label: Text(L10n.of(context).add_account),
-      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => isDesktop ? const DesktopCookieLoginScreen() : const TwitterLoginWebview())),
-    );
-=======
   icon: const Icon(Icons.person_add),
   label: Text(L10n.of(context).add_account),
-  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TwitterLoginWebview())),
+  // The webview login has no Linux/Windows implementation, so desktop goes
+  // through the cookie-paste screen instead.
+  onPressed: () => Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) => isDesktop ? const DesktopCookieLoginScreen() : const TwitterLoginWebview())),
 );
->>>>>>> upstream
 
 class NoAccountErrorWidget extends FritterErrorWidget {
   final Function? onRetry;

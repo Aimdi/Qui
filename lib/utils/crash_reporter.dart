@@ -127,7 +127,7 @@ class CrashReporter {
 
   Future<CrashReportResult> sendTestReport() {
     return report(
-      Exception('QuaX crash-report test'),
+      Exception('Qui crash-report test'),
       StackTrace.current,
       context: 'manual test from Settings',
       force: true,

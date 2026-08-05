@@ -3,11 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
-<<<<<<< ours
-import 'package:qui/utils/desktop_files.dart';
-=======
 import 'package:qui/client/accounts.dart';
->>>>>>> upstream
 import 'package:qui/constants.dart';
 import 'package:qui/database/entities.dart';
 import 'package:qui/database/repository.dart';
@@ -20,6 +16,7 @@ import 'package:qui/saved/saved_tweet_model.dart';
 import 'package:qui/settings/sync_screen.dart';
 import 'package:qui/subscriptions/users_model.dart';
 import 'package:qui/utils/crash_reporter.dart';
+import 'package:qui/utils/desktop_files.dart';
 import 'package:logging/logging.dart';
 import 'package:pref/pref.dart';
 import 'package:provider/provider.dart';

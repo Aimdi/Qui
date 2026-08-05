@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:pref/pref.dart';
 import 'package:qui/constants.dart';
 import 'package:qui/profile/profile.dart' show profileTabs;
+import 'package:qui/utils/desktop_files.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'dart:io';
@@ -94,7 +95,10 @@ Future<void> openInDefaultBrowser(String url) async {
 /// Ported from upstream cb5927c2, keeping this fork's tracking-parameter
 /// stripping.
 Future<void> openUri(BuildContext context, String uri) async {
-  final embedded = PrefService.of(context, listen: false).get(optionOpenLinksInEmbeddedBrowser) == true;
+  // The in-app browser view only exists on mobile; on desktop the preference
+  // is hidden and every link goes to the system browser.
+  final embedded = !isDesktop &&
+      PrefService.of(context, listen: false).get(optionOpenLinksInEmbeddedBrowser) == true;
   await launchUrlString(
     cleanUrl(uri),
     mode: embedded ? LaunchMode.inAppBrowserView : LaunchMode.externalApplication,

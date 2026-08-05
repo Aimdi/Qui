@@ -14,7 +14,6 @@ import 'package:qui/home/_saved.dart';
 import 'package:qui/home/home_model.dart';
 import 'package:qui/plugins/plugin_registry.dart';
 import 'package:qui/search/search.dart';
-import 'package:qui/substack/substack_screen.dart';
 import 'package:qui/subscriptions/subscriptions.dart';
 import 'package:qui/trends/trends_screen.dart';
 import 'package:qui/ui/desktop_shell.dart';
@@ -42,8 +41,6 @@ final List<NavigationPage> defaultHomePages = [
       'trending', (c) => L10n.of(c).trending, const Icon(Icons.tag_outlined), const Icon(Icons.tag_rounded)),
   NavigationPage(
       'saved', (c) => L10n.of(c).saved, const Icon(Icons.bookmark_border_rounded), const Icon(Icons.bookmark_rounded)),
-  NavigationPage('substack', (c) => L10n.of(c).substack, const Icon(Icons.newspaper_outlined),
-      const Icon(Icons.newspaper_rounded)),
 ];
 
 class HomeScreen extends StatelessWidget {
@@ -137,10 +134,6 @@ class _HomeScreenState extends State<_HomeScreen> {
                   );
                 case 'saved':
                   return SavedScreen(
-                    scrollController: scrollControllers[index]!,
-                  );
-                case 'substack':
-                  return SubstackScreen(
                     scrollController: scrollControllers[index]!,
                   );
                 default:

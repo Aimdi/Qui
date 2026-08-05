@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qui/substack/substack_html_parser.dart';
+import 'package:qui/plugins/substack/substack_html_parser.dart';
 
 void main() {
   test('parses paragraphs with inline styling and links', () {

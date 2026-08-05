@@ -27,7 +27,6 @@ const String tableSubscriptionGroup = 'subscription_group';
 const String tableSubscriptionGroupMember = 'subscription_group_member';
 
 const String tableAccounts = 'accounts';
-const String tableSubstackSubscription = 'substack_subscription';
 const String tablePostNotification = 'post_notification';
 const String tableRetweetFilter = 'retweet_filter';
 const String tableReplyFilter = 'reply_filter';
@@ -621,110 +620,9 @@ class Repository {
   Future<bool> migrate() async {
     final myMigrationPlan = buildMigrationPlan();
 
-<<<<<<< ours
-          await batch.commit();
-        })),
-      ],
-      20: [
-        Migration(Operation((db) async {
-          await db.update(tableSubscriptionGroup, {'icon': defaultGroupIcon},
-              where: "icon IS NULL OR icon = '' OR icon = ?", whereArgs: ['rss']);
-        }))
-      ],
-      21: [
-        // create table for storing twitter accounts
-        SqlMigration(
-            'CREATE TABLE IF NOT EXISTS $tableAccounts (id TEXT PRIMARY KEY, password TEXT, email TEXT, auth_header VARCHAR)'),
-      ],
-      22: [
-        // Add screen_name column and remove password/email columns from accounts table
-        SqlMigration('ALTER TABLE $tableAccounts RENAME TO ${tableAccounts}_old'),
-        SqlMigration(
-            'CREATE TABLE $tableAccounts (id TEXT PRIMARY KEY, auth_header VARCHAR, screen_name VARCHAR DEFAULT NULL)'),
-        SqlMigration('INSERT INTO $tableAccounts (id, auth_header) SELECT id, auth_header FROM ${tableAccounts}_old'),
-        SqlMigration('DROP TABLE ${tableAccounts}_old'),
-      ],
-      23: [
-        SqlMigration('ALTER TABLE $tableSubscription ADD COLUMN in_feed BOOLEAN DEFAULT 1'),
-      ],
-      24: [
-        // Account not-found health columns for the selection strategy (timestamp as ISO-8601 TEXT).
-        // Rate-limit (429) state is tracked in memory per endpoint, not persisted.
-        SqlMigration('ALTER TABLE $tableAccounts ADD COLUMN last_not_found_at TEXT DEFAULT NULL'),
-        SqlMigration('ALTER TABLE $tableAccounts ADD COLUMN consecutive_not_found INTEGER DEFAULT 0'),
-      ],
-      25: [
-        // Folders for saved posts: a folder table plus a nullable folder_id on saved tweets.
-        // A saved post belongs to at most one folder (NULL means "unfiled").
-        SqlMigration(
-            'CREATE TABLE IF NOT EXISTS $tableSavedTweetFolder (id VARCHAR PRIMARY KEY, name VARCHAR NOT NULL, position INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
-            reverseSql: 'DROP TABLE $tableSavedTweetFolder'),
-        SqlMigration('ALTER TABLE $tableSavedTweet ADD COLUMN folder_id VARCHAR DEFAULT NULL',
-            reverseSql: 'ALTER TABLE $tableSavedTweet DROP COLUMN folder_id'),
-      ],
-      26: [
-        // Liked posts: a local-only table mirroring saved_tweet. A "like" never leaves the device.
-        SqlMigration(
-            'CREATE TABLE IF NOT EXISTS $tableLikedTweet (id VARCHAR PRIMARY KEY, content TEXT NOT NULL, user_id VARCHAR DEFAULT NULL, liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
-            reverseSql: 'DROP TABLE $tableLikedTweet'),
-      ],
-      27: [
-        // Per-group feed ordering: popular (Top search results) vs recent (Latest, the default).
-        SqlMigration('ALTER TABLE $tableSubscriptionGroup ADD COLUMN popular BOOLEAN DEFAULT 0',
-            reverseSql: 'ALTER TABLE $tableSubscriptionGroup DROP COLUMN popular'),
-      ],
-      28: [
-        // Users watched for new-post notifications, with the newest post id
-        // already handled (NULL = baseline not yet established).
-        SqlMigration(
-            'CREATE TABLE IF NOT EXISTS $tablePostNotification (user_id VARCHAR PRIMARY KEY, screen_name VARCHAR NOT NULL, name VARCHAR, last_tweet_id VARCHAR DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
-            reverseSql: 'DROP TABLE $tablePostNotification'),
-      ],
-      29: [
-        // Users whose retweets are hidden from all feeds ("turn off reposts").
-        SqlMigration(
-            'CREATE TABLE IF NOT EXISTS $tableRetweetFilter (user_id VARCHAR PRIMARY KEY, screen_name VARCHAR NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
-            reverseSql: 'DROP TABLE $tableRetweetFilter'),
-      ],
-      30: [
-        // The new-post notification feature was removed; drop its table.
-        SqlMigration('DROP TABLE IF EXISTS $tablePostNotification'),
-      ],
-      31: [
-        // Custom feed mode with a per-group content filter (sfw/default/nsfw).
-        SqlMigration('ALTER TABLE $tableSubscriptionGroup ADD COLUMN custom BOOLEAN DEFAULT 0',
-            reverseSql: 'ALTER TABLE $tableSubscriptionGroup DROP COLUMN custom'),
-        SqlMigration("ALTER TABLE $tableSubscriptionGroup ADD COLUMN content_filter VARCHAR DEFAULT 'default'",
-            reverseSql: 'ALTER TABLE $tableSubscriptionGroup DROP COLUMN content_filter'),
-      ],
-      32: [
-        // Last-read chain per group feed, for the "You're caught up" divider.
-        // chain_created_at is ISO-8601 TEXT, like the account-health columns.
-        SqlMigration(
-            'CREATE TABLE IF NOT EXISTS $tableFeedReadPosition (group_id VARCHAR PRIMARY KEY, chain_id VARCHAR NOT NULL, chain_created_at TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
-            reverseSql: 'DROP TABLE $tableFeedReadPosition'),
-      ],
-      33: [
-        // Per-folder toggle: download a post's images when it's filed here.
-        SqlMigration('ALTER TABLE $tableSavedTweetFolder ADD COLUMN auto_download BOOLEAN DEFAULT 0',
-            reverseSql: 'ALTER TABLE $tableSavedTweetFolder DROP COLUMN auto_download'),
-      ],
-      34: [
-        // Substack publications the user follows; host is the publication's
-        // domain (name.substack.com or a custom domain).
-        SqlMigration(
-            'CREATE TABLE IF NOT EXISTS $tableSubstackSubscription (host VARCHAR PRIMARY KEY, name VARCHAR NOT NULL, logo_url VARCHAR, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
-            reverseSql: 'DROP TABLE $tableSubstackSubscription'),
-      ]
-    });
-    await openDatabase(
-      databaseName,
-      version: 34,
-=======
     await openDatabase(
       databaseName,
       version: databaseVersion,
->>>>>>> upstream
       onUpgrade: myMigrationPlan.call,
       onCreate: myMigrationPlan.call,
       onDowngrade: myMigrationPlan.call,

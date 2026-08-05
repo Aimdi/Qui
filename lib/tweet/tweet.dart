@@ -29,11 +29,6 @@ import 'package:qui/ui/x_look_theme.dart';
 import 'package:qui/user.dart';
 import 'package:qui/utils/rich_text.dart';
 import 'package:qui/utils/translation.dart';
-<<<<<<< ours
-import 'package:qui/utils/urls.dart';
-import 'package:qui/ui/layout.dart';
-=======
->>>>>>> upstream
 import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
 import 'package:pref/pref.dart';
@@ -738,53 +733,6 @@ class TweetTileState extends State<TweetTile> with SingleTickerProviderStateMixi
               ));
     }
 
-<<<<<<< ours
-    final desktop = useDesktopShell(context);
-    final cardColor = tweetCardColor(context);
-    final body = Row(
-      children: [
-        retweetSidebar,
-        Expanded(
-            child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            retweetBanner,
-            replyToTile,
-            ?pinnedBadge,
-            ?threadBadge,
-            headerTile,
-            ...bodyChildren,
-          ],
-        ))
-      ],
-    );
-
-    // Flare desktop timelines prefer flat “plain” posts with hairline dividers
-    // over elevated mobile cards. Compact keeps the classic Card chrome.
-    final post = desktop
-        ? Material(
-            color: cardColor ?? theme.colorScheme.surface,
-            child: body,
-          )
-        : Card(
-            color: cardColor,
-            elevation: 0,
-            margin: EdgeInsets.zero,
-            child: body,
-          );
-
-    return Consumer<ImportDataModel>(
-        builder: (context, model, child) => RepaintBoundary(
-            key: _globalKey,
-            child: Column(children: [
-              post,
-              Divider(
-                height: 0,
-                thickness: desktop ? 0.5 : 1,
-                color: addSeparator
-                    ? theme.colorScheme.outlineVariant.withValues(alpha: desktop ? 0.55 : 0.85)
-                    : Colors.transparent,
-=======
     return RepaintBoundary(
             key: _globalKey,
             child: Column(children: [
@@ -810,7 +758,6 @@ class TweetTileState extends State<TweetTile> with SingleTickerProviderStateMixi
                   ],
                 ),
               ),
->>>>>>> upstream
               ),
               if (addSeparator)
                 tweetHairlineDivider(context)

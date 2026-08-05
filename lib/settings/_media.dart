@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:qui/constants.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:pref/pref.dart';
+import 'package:qui/utils/desktop_files.dart';
 import 'package:qui/utils/download_directory.dart';
 
 class SettingsMediaFragment extends StatelessWidget {
@@ -157,6 +158,19 @@ class DownloadTypeSettingState extends State<DownloadTypeSetting> {
         if (widget.prefs.get(optionDownloadType) == optionDownloadTypeDirectory)
           PrefButton(
             onTap: () async {
+              if (isDesktop) {
+                // Desktop needs no SAF grant: a plain filesystem path is
+                // writable directly, so only optionDownloadPath is stored.
+                final path = await pickDirectoryPath();
+                if (path == null) {
+                  return;
+                }
+                setState(() {
+                  widget.prefs.set(optionDownloadTreeUri, '');
+                  widget.prefs.set(optionDownloadPath, path);
+                });
+                return;
+              }
               // The system picker, which also hands over lasting write access.
               // A bare path cannot be written to on Android 11 and later.
               final treeUri = await DownloadDirectory.pick();
@@ -170,13 +184,16 @@ class DownloadTypeSettingState extends State<DownloadTypeSetting> {
             },
             title: Text(L10n.current.download_path),
             subtitle: Text(
-              treeUri.isEmpty && downloadPath.isEmpty
-                  ? L10n.current.not_set
-                  : (treeUri.isEmpty
-                      // Chosen by an older build, so it cannot be written to
-                      // any more; say so instead of failing at save time.
-                      ? '$downloadPath — ${L10n.current.download_path_needs_reselect}'
-                      : DownloadDirectory.displayName(treeUri)),
+              isDesktop
+                  // On desktop the stored path is already user-readable.
+                  ? (downloadPath.isEmpty ? L10n.current.not_set : downloadPath)
+                  : (treeUri.isEmpty && downloadPath.isEmpty
+                      ? L10n.current.not_set
+                      : (treeUri.isEmpty
+                          // Chosen by an older build, so it cannot be written to
+                          // any more; say so instead of failing at save time.
+                          ? '$downloadPath — ${L10n.current.download_path_needs_reselect}'
+                          : DownloadDirectory.displayName(treeUri))),
             ),
             child: Text(L10n.current.choose),
           )

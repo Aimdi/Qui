@@ -14,6 +14,9 @@ void main() {
 
   setUp(() {
     calls.clear();
+    // The channel only exists in the Android embedding; on the test host the
+    // platform guards would short-circuit before reaching the mocked channel.
+    DownloadDirectory.debugTreatAsAndroid = true;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_channel, (call) async {
       calls.add(call);
@@ -22,6 +25,7 @@ void main() {
   });
 
   tearDown(() {
+    DownloadDirectory.debugTreatAsAndroid = false;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_channel, null);
     handler = (_) => null;
   });

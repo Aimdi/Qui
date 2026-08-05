@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dart_twitter_api/twitter_api.dart' show Media;
 import 'package:flutter/material.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
@@ -41,7 +43,11 @@ Future<void> autoDownloadTweetPhotos({
 
   final downloadType = prefs.get(optionDownloadType);
   final treeUri = prefs.get<String>(optionDownloadTreeUri) ?? '';
-  if (downloadType == optionDownloadTypeAsk || treeUri.isEmpty) {
+  final downloadPath = prefs.get<String>(optionDownloadPath) ?? '';
+  // Desktop writes to a plain filesystem path; Android needs the SAF tree
+  // grant, since a bare path cannot be written to on Android 11 and later.
+  final haveFolder = isDesktop ? downloadPath.isNotEmpty : treeUri.isNotEmpty;
+  if (downloadType == optionDownloadTypeAsk || !haveFolder) {
     messenger.showSnackBar(SnackBar(content: Text(needFolderLabel)));
     return;
   }
@@ -56,7 +62,11 @@ Future<void> autoDownloadTweetPhotos({
         continue;
       }
       final fileName = '$username-${p.basename(media.mediaUrlHttps!)}'.split('?')[0];
-      await DownloadDirectory.save(treeUri: treeUri, fileName: fileName, bytes: response.bodyBytes);
+      if (isDesktop) {
+        await File(p.join(downloadPath, fileName)).writeAsBytes(response.bodyBytes);
+      } else {
+        await DownloadDirectory.save(treeUri: treeUri, fileName: fileName, bytes: response.bodyBytes);
+      }
       saved++;
     } catch (e) {
       failure ??= e;
@@ -86,12 +96,12 @@ Future<void> downloadUriToPickedFile(BuildContext context, Uri uri, String fileN
     }
 
     final downloadType = prefs.get(optionDownloadType);
-    final treeUri = prefs.get<String>(optionDownloadTreeUri) ?? '';
 
-<<<<<<< ours
-    // If the user wants to pick a file every time a download happens
-    if (downloadType == optionDownloadTypeAsk || downloadPath == '') {
-      if (isDesktop) {
+    if (isDesktop) {
+      // Desktop has no SAF: a fixed download folder is a plain filesystem
+      // path, and the ask flow goes through the native save dialog.
+      final downloadPath = prefs.get<String>(optionDownloadPath) ?? '';
+      if (downloadType == optionDownloadTypeAsk || downloadPath.isEmpty) {
         final fileInfo = await saveBytesToPickedFile(
           fileName: sanitizedFilename,
           data: response,
@@ -100,12 +110,15 @@ Future<void> downloadUriToPickedFile(BuildContext context, Uri uri, String fileN
           return;
         }
       } else {
-        var fileInfo =
-            await FlutterFileDialog.saveFile(params: SaveFileDialogParams(fileName: sanitizedFilename, data: response));
-        if (fileInfo == null) {
-          return;
-        }
-=======
+        await File(p.join(downloadPath, sanitizedFilename)).writeAsBytes(response);
+      }
+
+      onSuccess();
+      return;
+    }
+
+    final treeUri = prefs.get<String>(optionDownloadTreeUri) ?? '';
+
     // Ask every time, or fall back to asking when no folder is usable yet — a
     // folder chosen by an older build cannot be written to any more.
     if (downloadType == optionDownloadTypeAsk || treeUri.isEmpty) {
@@ -113,7 +126,6 @@ Future<void> downloadUriToPickedFile(BuildContext context, Uri uri, String fileN
           await FlutterFileDialog.saveFile(params: SaveFileDialogParams(fileName: sanitizedFilename, data: response));
       if (fileInfo == null) {
         return;
->>>>>>> upstream
       }
 
       onSuccess();
