@@ -36,12 +36,20 @@ jobs:
 
       - name: Generate + build Linux release
         run: |
+          RELEASE_TAG="${GITHUB_REF_NAME}"
+          if [ -n "${{ inputs.tag }}" ]; then
+            RELEASE_TAG="${{ inputs.tag }}"
+          fi
           flutter config --enable-linux-desktop --no-analytics
           flutter pub get
           dart run dart_pubspec_licenses:generate
           dart run intl_utils:generate
           dart run flutter_iconpicker:generate_packs --packs material || true
-          flutter build linux --release --no-tree-shake-icons
+          # Bake the tag in so the in-app update check can tell which release
+          # this binary is (pubspec keeps the upstream version, so
+          # package_info alone cannot). See lib/utils/updates.dart.
+          flutter build linux --release --no-tree-shake-icons \
+            --dart-define=QUAX_RELEASE_TAG="$RELEASE_TAG"
 
       - name: Package portable tarball
         run: |
@@ -135,7 +143,7 @@ jobs:
           body: |
             ## Qui ${{ env.VERSION }} — desktop (Linux)
 
-            Privacy-focused X client for PC (port of [QuaX-fix](https://github.com/Aimdi/QuaX-fix)), with a Flare-inspired shell and **deck mode**.
+            Privacy-focused X client for PC (port of [XTA](https://github.com/Aimdi/XTA)), with a Flare-inspired shell and **deck mode**.
 
             ### CachyOS / Arch install
 

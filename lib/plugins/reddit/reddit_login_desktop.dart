@@ -44,7 +44,7 @@ class _RedditLoginDesktopState extends State<RedditLoginDesktop> {
     final pasted = _redirectController.text.trim();
     final uri = Uri.tryParse(pasted);
     if (pasted.isEmpty || uri == null) {
-      setState(() => _error = 'Paste the whole ${RedditAuth.redirectUri}… address');
+      setState(() => _error = L10n.of(context).reddit_desktop_login_paste_whole_address(RedditAuth.redirectUri));
       return;
     }
 
@@ -57,8 +57,7 @@ class _RedditLoginDesktopState extends State<RedditLoginDesktop> {
 
     final code = RedditAuth.codeFrom(uri, expectedState: widget.state);
     if (code == null) {
-      setState(() => _error =
-          'That is not the redirect for this sign-in attempt. Paste the ${RedditAuth.redirectUri}… address the browser was sent to.');
+      setState(() => _error = L10n.of(context).reddit_desktop_login_wrong_redirect(RedditAuth.redirectUri));
       return;
     }
 
@@ -79,10 +78,7 @@ class _RedditLoginDesktopState extends State<RedditLoginDesktop> {
               Text(L10n.of(context).plugin_reddit_sign_in, style: theme.textTheme.headlineSmall),
               const SizedBox(height: 8),
               Text(
-                'Sign in on reddit.com in your browser and allow the app. Reddit then '
-                'sends the browser to an address starting with ${RedditAuth.redirectUri} — '
-                'the page will not load, which is expected. Copy that address from the '
-                "browser's address bar and paste it below. Nothing else leaves this machine.",
+                L10n.of(context).reddit_desktop_login_instructions(RedditAuth.redirectUri),
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -97,7 +93,7 @@ class _RedditLoginDesktopState extends State<RedditLoginDesktop> {
                 autofocus: true,
                 autocorrect: false,
                 decoration: InputDecoration(
-                  labelText: 'Redirect address (${RedditAuth.redirectUri}…)',
+                  labelText: L10n.of(context).reddit_desktop_login_field_label(RedditAuth.redirectUri),
                   border: const OutlineInputBorder(),
                 ),
                 onSubmitted: (_) => _submit(),
