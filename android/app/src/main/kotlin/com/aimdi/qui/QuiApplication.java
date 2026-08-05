@@ -1,11 +1,10 @@
 package com.aimdi.qui;
 
+import android.app.Application;
 import android.content.Context;
 import androidx.multidex.MultiDex;
 
-import io.flutter.app.FlutterApplication;
-
-public class QuiApplication extends FlutterApplication {
+public class QuiApplication extends Application {
 
     @Override
     protected void attachBaseContext(Context base) {
