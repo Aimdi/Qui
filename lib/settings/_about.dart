@@ -75,7 +75,7 @@ class SettingsAboutFragment extends StatelessWidget {
         leading: const Icon(Icons.favorite),
         title: Text(L10n.of(context).contribute),
         subtitle: Text(L10n.of(context).help_make_fritter_even_better),
-        onTap: () => openUri('https://github.com/teskann/qui'),
+        onTap: () => openUri(context, 'https://github.com/Aimdi/Qui'),
       ),
       PrefLabel(
         leading: const Icon(Icons.bug_report),
@@ -83,7 +83,7 @@ class SettingsAboutFragment extends StatelessWidget {
         subtitle: Text(
           L10n.of(context).let_the_developers_know_if_something_is_broken,
         ),
-        onTap: () => openUri('https://github.com/teskann/qui/issues'),
+        onTap: () => openUri(context, 'https://github.com/Aimdi/Qui/issues'),
       ),
       PrefLabel(
         leading: const Icon(Icons.copyright),

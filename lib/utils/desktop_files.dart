@@ -27,6 +27,14 @@ Future<String?> pickOpenFilePath({
   return result.files.single.path;
 }
 
+/// Pick an existing directory. Returns its absolute path, or null if cancelled.
+///
+/// Desktop counterpart of the Android SAF tree picker: a plain filesystem path
+/// is all that is needed here, since `File` writes are not restricted.
+Future<String?> pickDirectoryPath({String? dialogTitle}) async {
+  return FilePicker.getDirectoryPath(dialogTitle: dialogTitle);
+}
+
 /// Save [data] to a user-chosen location.
 ///
 /// On desktop, [FilePicker.saveFile] returns a path; we write the bytes there.
@@ -40,10 +48,13 @@ Future<String?> saveBytesToPickedFile({
     final path = await FilePicker.saveFile(
       dialogTitle: dialogTitle,
       fileName: fileName,
+      bytes: data,
     );
     if (path == null) {
       return null;
     }
+    // file_picker's desktop implementations only return the chosen path, so
+    // write the bytes ourselves; if the plugin did write, this is a no-op.
     final file = File(path);
     await file.writeAsBytes(data, flush: true);
     return file.path;

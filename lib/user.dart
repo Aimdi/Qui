@@ -9,10 +9,11 @@ import 'package:qui/generated/l10n.dart';
 import 'package:qui/group/group_model.dart';
 import 'package:qui/profile/profile.dart';
 import 'package:qui/subscriptions/users_model.dart';
+import 'package:qui/ui/x_look_theme.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
 import 'package:provider/provider.dart';
 
-Widget _createUserAvatar(String? uri, double size) {
+Widget _createUserAvatar(String? uri, double size, [int? cacheWidth]) {
   if (uri == null) {
     return SizedBox(width: size, height: size);
   } else {
@@ -21,6 +22,7 @@ Widget _createUserAvatar(String? uri, double size) {
       uri.replaceAll('normal', '200x200'),
       width: size,
       height: size,
+      cacheWidth: cacheWidth,
       loadStateChanged: (state) {
         switch (state.extendedImageLoadState) {
           case LoadState.failed:
@@ -64,9 +66,14 @@ class UserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = XLookTokens.maybeOf(context);
+    final resolvedSize = size == 48 && tokens != null ? tokens.avatarSize : size;
+    // Decode at the displayed size instead of the full 200x200 download, so
+    // scrolling feeds don't pay for oversized bitmaps.
+    final cacheWidth = (resolvedSize * MediaQuery.devicePixelRatioOf(context)).ceil();
     return ClipRRect(
-      borderRadius: BorderRadius.circular(size),
-      child: _createUserAvatar(uri, size),
+      borderRadius: BorderRadius.circular(resolvedSize),
+      child: _createUserAvatar(uri, resolvedSize, cacheWidth),
     );
   }
 }
@@ -276,7 +283,11 @@ class UserWithExtra extends User {
   }
 
   factory UserWithExtra.fromNonLegacyJson(Map<String, dynamic> json) {
-    var userWithExtra = UserWithExtra.fromJson(json["legacy"]);
+    // X keeps moving profile fields out of `legacy` and into `core` / `avatar`.
+    // A response that has finished that migration must still yield a usable
+    // profile, so an absent `legacy` degrades to whatever the rest carries
+    // rather than throwing and taking the whole screen down.
+    var userWithExtra = UserWithExtra.fromJson((json["legacy"] as Map<String, dynamic>?) ?? const <String, dynamic>{});
     userWithExtra
       ..name = json["core"]?["name"] ?? userWithExtra.name
       ..createdAt = convertTwitterDateTime(json["core"]?["created_at"]) ?? userWithExtra.createdAt

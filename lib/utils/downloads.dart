@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:dart_twitter_api/twitter_api.dart' show Media;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:qui/utils/desktop_files.dart';
 
@@ -10,6 +9,7 @@ import 'package:qui/client/client.dart';
 import 'package:qui/constants.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/ui/errors.dart';
+import 'package:qui/utils/download_directory.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:pref/pref.dart';
@@ -42,15 +42,19 @@ Future<void> autoDownloadTweetPhotos({
   }
 
   final downloadType = prefs.get(optionDownloadType);
-  final downloadPath = prefs.get<String>(optionDownloadPath);
-  if (downloadType == optionDownloadTypeAsk || downloadPath == null || downloadPath.isEmpty) {
+  final treeUri = prefs.get<String>(optionDownloadTreeUri) ?? '';
+  final downloadPath = prefs.get<String>(optionDownloadPath) ?? '';
+  // Desktop writes to a plain filesystem path; Android needs the SAF tree
+  // grant, since a bare path cannot be written to on Android 11 and later.
+  final haveFolder = isDesktop ? downloadPath.isNotEmpty : treeUri.isNotEmpty;
+  if (downloadType == optionDownloadTypeAsk || !haveFolder) {
     messenger.showSnackBar(SnackBar(content: Text(needFolderLabel)));
     return;
   }
 
-  messenger.showSnackBar(SnackBar(content: Text(downloadingLabel)));
-  const platform = MethodChannel('browser_resolver');
+  messenger.showSnackBar(workingSnackBar(downloadingLabel));
   var saved = 0;
+  Object? failure;
   for (final media in photos) {
     try {
       final response = await http.get(Uri.parse('${media.mediaUrlHttps}:orig'));
@@ -58,17 +62,23 @@ Future<void> autoDownloadTweetPhotos({
         continue;
       }
       final fileName = '$username-${p.basename(media.mediaUrlHttps!)}'.split('?')[0];
-      final savedFile = p.join(downloadPath, fileName);
-      await File(savedFile).writeAsBytes(response.bodyBytes);
-      try {
-        await platform.invokeMethod('scanMediaFile', {'path': savedFile});
-      } catch (_) {}
+      if (isDesktop) {
+        await File(p.join(downloadPath, fileName)).writeAsBytes(response.bodyBytes);
+      } else {
+        await DownloadDirectory.save(treeUri: treeUri, fileName: fileName, bytes: response.bodyBytes);
+      }
       saved++;
-    } catch (_) {}
+    } catch (e) {
+      failure ??= e;
+    }
   }
+
+  messenger.hideCurrentSnackBar(reason: SnackBarClosedReason.hide);
   if (saved > 0) {
-    messenger.hideCurrentSnackBar(reason: SnackBarClosedReason.hide);
     messenger.showSnackBar(SnackBar(content: Text(doneLabel)));
+  } else if (failure != null) {
+    // Silent failure is what made this hard to diagnose; say what to do.
+    messenger.showSnackBar(SnackBar(content: Text(needFolderLabel)));
   }
 }
 
@@ -86,11 +96,12 @@ Future<void> downloadUriToPickedFile(BuildContext context, Uri uri, String fileN
     }
 
     final downloadType = prefs.get(optionDownloadType);
-    final downloadPath = prefs.get(optionDownloadPath);
 
-    // If the user wants to pick a file every time a download happens
-    if (downloadType == optionDownloadTypeAsk || downloadPath == '') {
-      if (isDesktop) {
+    if (isDesktop) {
+      // Desktop has no SAF: a fixed download folder is a plain filesystem
+      // path, and the ask flow goes through the native save dialog.
+      final downloadPath = prefs.get<String>(optionDownloadPath) ?? '';
+      if (downloadType == optionDownloadTypeAsk || downloadPath.isEmpty) {
         final fileInfo = await saveBytesToPickedFile(
           fileName: sanitizedFilename,
           data: response,
@@ -99,26 +110,31 @@ Future<void> downloadUriToPickedFile(BuildContext context, Uri uri, String fileN
           return;
         }
       } else {
-        var fileInfo =
-            await FlutterFileDialog.saveFile(params: SaveFileDialogParams(fileName: sanitizedFilename, data: response));
-        if (fileInfo == null) {
-          return;
-        }
+        await File(p.join(downloadPath, sanitizedFilename)).writeAsBytes(response);
       }
 
       onSuccess();
       return;
     }
 
-    // Finally, save to the user-defined directory
-    var savedFile = p.join(downloadPath, sanitizedFilename);
-    await File(savedFile).writeAsBytes(response);
+    final treeUri = prefs.get<String>(optionDownloadTreeUri) ?? '';
 
-    // Notify Android's media scanner so the file appears in the gallery
-    const platform = MethodChannel('browser_resolver');
-    try {
-      await platform.invokeMethod('scanMediaFile', {'path': savedFile});
-    } catch (_) {}
+    // Ask every time, or fall back to asking when no folder is usable yet — a
+    // folder chosen by an older build cannot be written to any more.
+    if (downloadType == optionDownloadTypeAsk || treeUri.isEmpty) {
+      var fileInfo =
+          await FlutterFileDialog.saveFile(params: SaveFileDialogParams(fileName: sanitizedFilename, data: response));
+      if (fileInfo == null) {
+        return;
+      }
+
+      onSuccess();
+      return;
+    }
+
+    // Write through the document tree the user granted, which is the only way
+    // to reach shared storage on Android 11 and later.
+    await DownloadDirectory.save(treeUri: treeUri, fileName: sanitizedFilename, bytes: response);
 
     onSuccess();
   } catch (e) {

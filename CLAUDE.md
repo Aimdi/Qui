@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Qui** is a privacy-focused Flutter desktop client for X (formerly Twitter). It is the PC port of [Aimdi/QuaX-fix](https://github.com/Aimdi/QuaX-fix) (itself based on Teskann/QuaX / Quacker / Fritter). Primary target is **Linux**; Windows and macOS are supported via the same Flutter codebase.
+**Qui** is a privacy-focused Flutter desktop client for X (formerly Twitter). It is the PC port of [Aimdi/XTA](https://github.com/Aimdi/XTA) (itself based on Teskann/QuaX / Quacker / Fritter). Primary target is **Linux**; Windows and macOS are supported via the same Flutter codebase.
 
 ## Build
 
@@ -16,7 +16,7 @@ flutter build linux --release
 
 ## Architecture
 
-Same as QuaX-fix: feature folders under `lib/`, **flutter_triple** stores, SQLite via `sqflite` + `sqflite_common_ffi` on desktop, reverse-engineered X API under `lib/client/`.
+Same as XTA (formerly QuaX-fix): feature folders under `lib/`, **flutter_triple** stores, SQLite via `sqflite` + `sqflite_common_ffi` on desktop, reverse-engineered X API under `lib/client/`.
 
 ### Desktop differences
 

@@ -3,27 +3,27 @@
 
 # Qui
 
-[![Based on](https://img.shields.io/badge/based%20on-Aimdi%2FQuaX--fix-1565C0?style=for-the-badge&logo=github)](https://github.com/Aimdi/QuaX-fix)
+[![Based on](https://img.shields.io/badge/based%20on-Aimdi%2FXTA-1565C0?style=for-the-badge&logo=github)](https://github.com/Aimdi/XTA)
 [![License: MIT](https://img.shields.io/github/license/Aimdi/Qui?style=for-the-badge&logo=opensourceinitiative&logoColor=FFFFFF&color=750014)](/LICENSE)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/Aimdi/Qui/ci.yml?style=for-the-badge&logo=github)](https://github.com/Aimdi/Qui/actions)
 ![Platforms](https://img.shields.io/badge/Linux%20%7C%20Windows%20%7C%20macOS-desktop-54C5F8?style=for-the-badge&logo=flutter&logoColor=white)
 ![Flutter version](https://img.shields.io/badge/Flutter-3.44+-54C5F8?style=for-the-badge&logo=flutter&logoColor=white)
 
-**Qui** is the **desktop** (PC) counterpart of [QuaX-fix](https://github.com/Aimdi/QuaX-fix) — a free, open-source, privacy-focused client for X (formerly Twitter). Same local-first design, same feeds and groups, built for Linux, Windows, and macOS with Flutter.
+**Qui** is the **desktop** (PC) counterpart of [XTA](https://github.com/Aimdi/XTA) — a free, open-source, privacy-focused client for X (formerly Twitter). Same local-first design, same feeds and groups, built for Linux, Windows, and macOS with Flutter.
 
 </div>
 
 ## ⚠️ This is a vibe-coded desktop port
 
-Qui is forked from [Aimdi/QuaX-fix](https://github.com/Aimdi/QuaX-fix) (itself a fork of [Teskann/QuaX](https://github.com/Teskann/QuaX)). Desktop support was added so the phone app’s features work on a PC — not every mobile UX detail was redesigned.
+Qui is forked from [Aimdi/XTA](https://github.com/Aimdi/XTA) (itself a fork of [Teskann/QuaX](https://github.com/Teskann/QuaX)). Desktop support was added so the phone app’s features work on a PC — not every mobile UX detail was redesigned.
 
-- Prefer [QuaX-fix](https://github.com/Aimdi/QuaX-fix) on Android and **Qui** on desktop.
+- Prefer [XTA](https://github.com/Aimdi/XTA) on Android and **Qui** on desktop.
 - Issues welcome; fixes will also be vibe coded.
 
 > [!IMPORTANT]
 > An X account is required. On desktop, sign in by pasting your browser cookies (`auth_token` + `ct0`) after logging into x.com. Subscriptions, saved posts, and settings stay local to the app.
 
-## Features (from QuaX-fix)
+## Features (from XTA)
 
 - Local subscriptions and custom **groups** / feeds
 - Media grids, feed order (Recent / Popular), content filters
@@ -35,7 +35,7 @@ Qui is forked from [Aimdi/QuaX-fix](https://github.com/Aimdi/QuaX-fix) (itself a
 
 ## Desktop shell (Flare-inspired)
 
-Qui keeps the **QuaX-fix / X-only core** (local subscriptions, groups, reverse-engineered API)
+Qui keeps the **XTA / X-only core** (local subscriptions, groups, reverse-engineered API)
 but presents it with a desktop chrome closer to [Flare](https://github.com/DimensionDev/Flare):
 
 - Left **icon rail** (Home, Subscriptions, Trending, Saved + Search / Settings)
@@ -50,7 +50,7 @@ Qui is **not** a multi-network client — Mastodon/Bluesky/RSS live in Flare; Qu
 
 | | Linux | Windows | macOS | Android |
 |---|:---:|:---:|:---:|:---:|
-| **Qui** | ✅ primary | ✅ | ✅ | (use [QuaX-fix](https://github.com/Aimdi/QuaX-fix)) |
+| **Qui** | ✅ primary | ✅ | ✅ | (use [XTA](https://github.com/Aimdi/XTA)) |
 
 ## Download
 
@@ -104,7 +104,7 @@ flutter run -d linux
 ## Credits
 
 - [Teskann/QuaX](https://github.com/Teskann/QuaX) and upstream Quacker / Fritter authors
-- [Aimdi/QuaX-fix](https://github.com/Aimdi/QuaX-fix) for the fork Qui is based on
+- [Aimdi/XTA](https://github.com/Aimdi/XTA) for the fork Qui is based on
 
 ## License
 

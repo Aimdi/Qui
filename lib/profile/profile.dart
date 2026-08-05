@@ -7,6 +7,7 @@ import 'package:qui/database/entities.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/profile/_follows.dart';
 import 'package:qui/profile/_media_grid.dart';
+import 'package:qui/profile/media_grid/media_grid_items/media_grid_item.dart';
 import 'package:qui/profile/_saved.dart';
 import 'package:qui/profile/_tweets.dart';
 import 'package:qui/profile/profile_feed_settings.dart';
@@ -28,15 +29,16 @@ typedef TabTitleBuilder = String Function(BuildContext context);
 class NavigationTab {
   final ProfileTabs id;
   final TabTitleBuilder titleBuilder;
+  final IconData icon;
 
-  NavigationTab(this.id, this.titleBuilder);
+  NavigationTab(this.id, this.titleBuilder, this.icon);
 }
 
 final List<NavigationTab> profileTabs = [
-  NavigationTab(ProfileTabs.posts, (c) => L10n.of(c).tweets),
-  NavigationTab(ProfileTabs.postsAndReplies, (c) => L10n.of(c).tweets_and_replies),
-  NavigationTab(ProfileTabs.media, (c) => L10n.of(c).media),
-  NavigationTab(ProfileTabs.saved, (c) => L10n.of(c).saved),
+  NavigationTab(ProfileTabs.posts, (c) => L10n.of(c).tweets, Icons.wysiwyg_outlined),
+  NavigationTab(ProfileTabs.postsAndReplies, (c) => L10n.of(c).tweets_and_replies, Icons.mode_comment_outlined),
+  NavigationTab(ProfileTabs.media, (c) => L10n.of(c).media, Icons.smart_display_outlined),
+  NavigationTab(ProfileTabs.saved, (c) => L10n.of(c).saved, Icons.bookmark_border),
 ];
 
 class ProfileScreenArguments {
@@ -117,6 +119,8 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
   final GlobalKey<NestedScrollViewState> nestedScrollViewKey = GlobalKey();
 
   late TabController _tabController;
+
+  MediaFilter _mediaFilter = MediaFilter.all;
 
   bool _showBackToTopButton = false;
 
@@ -269,18 +273,33 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
                   bottom: AppBar(
                       automaticallyImplyLeading: false,
                       backgroundColor: theme.colorScheme.surface,
-                      flexibleSpace: TabBar(
-                        controller: _tabController,
-                        tabs: profileTabs.map((t) =>
-                            Tab(
-                                child: Text(t.titleBuilder(context),
-                                  textAlign: TextAlign.center,
-                                ))).toList(),
-                        dividerColor: Theme
-                            .of(context)
-                            .colorScheme
-                            .surfaceBright
-                            .withAlpha(150),
+                      flexibleSpace: AnimatedBuilder(
+                        animation: _tabController,
+                        builder: (context, _) => TabBar(
+                          controller: _tabController,
+                          indicator: UnderlineTabIndicator(
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+                            borderSide: BorderSide(width: 3, color: theme.colorScheme.onSurface),
+                          ),
+                          indicatorSize: TabBarIndicatorSize.label,
+                          labelColor: theme.colorScheme.onSurface,
+                          unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                          tabs: [
+                            for (final (i, t) in profileTabs.indexed)
+                              Tab(
+                                  child: _ProfileTabLabel(
+                                tab: t,
+                                selected: _tabController.index == i,
+                                trailing: t.id == ProfileTabs.media
+                                    ? _MediaFilterButton(
+                                        value: _mediaFilter,
+                                        onChanged: (filter) => setState(() => _mediaFilter = filter),
+                                      )
+                                    : null,
+                              )),
+                          ],
+                          dividerColor: theme.colorScheme.surfaceBright.withAlpha(150),
+                        ),
                       )),
                   flexibleSpace: FlexibleSpaceBar(
                     centerTitle: true,
@@ -386,11 +405,8 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
                                                                 child: Row(
                                                                   crossAxisAlignment: CrossAxisAlignment.center,
                                                                   children: [
-                                                                    Icon(Icons.location_on,
-                                                                        size: 12,
-                                                                        color: theme.brightness == Brightness.dark
-                                                                            ? Colors.white
-                                                                            : Colors.black),
+                                                                    Icon(Icons.location_on_outlined,
+                                                                        size: 14, color: theme.hintColor),
                                                                     const SizedBox(width: 4),
                                                                     Text(user.location!, style: metadataTextStyle),
                                                                     const SizedBox(
@@ -407,10 +423,7 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
                                                                     crossAxisAlignment: CrossAxisAlignment.center,
                                                                     children: [
                                                                       Icon(Icons.link,
-                                                                          size: 12,
-                                                                          color: theme.brightness == Brightness.dark
-                                                                              ? Colors.white
-                                                                              : Colors.black),
+                                                                          size: 14, color: theme.hintColor),
                                                                       const SizedBox(width: 4),
                                                                       Builder(builder: (context) {
                                                                         var url = user.entities?.url?.urls?.firstWhere(
@@ -436,7 +449,7 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
                                                                                   color: Theme.of(context)
                                                                                       .colorScheme
                                                                                       .primary)),
-                                                                          onTap: () => openUri(expandedUrl),
+                                                                          onTap: () => openUri(context, expandedUrl),
                                                                         );
                                                                       }),
                                                                       const SizedBox(
@@ -451,11 +464,8 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
                                                                 child: Row(
                                                                   crossAxisAlignment: CrossAxisAlignment.center,
                                                                   children: [
-                                                                    Icon(Icons.calendar_today,
-                                                                        size: 12,
-                                                                        color: theme.brightness == Brightness.dark
-                                                                            ? Colors.white
-                                                                            : Colors.black),
+                                                                    Icon(Icons.calendar_today_outlined,
+                                                                        size: 14, color: theme.hintColor),
                                                                     const SizedBox(width: 4),
                                                                     Text(
                                                                         L10n.of(context).joined(DateFormat('MMMM yyyy')
@@ -482,18 +492,12 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
                                                                       child: Row(
                                                                         crossAxisAlignment: CrossAxisAlignment.center,
                                                                         children: [
-                                                                          Icon(Icons.person,
-                                                                              size: 12,
-                                                                              color: theme.brightness == Brightness.dark
-                                                                                  ? Colors.white
-                                                                                  : Colors.black),
-                                                                          const SizedBox(width: 4),
                                                                           Text.rich(TextSpan(children: [
                                                                             TextSpan(
                                                                                 text: numberFormat.format(
                                                                                     widget.profile.user.friendsCount),
                                                                                 style: metadataTextStyle.copyWith(
-                                                                                    fontWeight: FontWeight.w500)),
+                                                                                    fontWeight: FontWeight.w700)),
                                                                             TextSpan(
                                                                                 text:
                                                                                     ' ${L10n.current.following.toLowerCase()}',
@@ -517,18 +521,12 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
                                                                       child: Row(
                                                                         crossAxisAlignment: CrossAxisAlignment.center,
                                                                         children: [
-                                                                          Icon(Icons.person,
-                                                                              size: 12,
-                                                                              color: theme.brightness == Brightness.dark
-                                                                                  ? Colors.white
-                                                                                  : Colors.black),
-                                                                          const SizedBox(width: 4),
                                                                           Text.rich(TextSpan(children: [
                                                                             TextSpan(
                                                                                 text: numberFormat.format(
                                                                                     widget.profile.user.followersCount),
                                                                                 style: metadataTextStyle.copyWith(
-                                                                                    fontWeight: FontWeight.w500)),
+                                                                                    fontWeight: FontWeight.w700)),
                                                                             TextSpan(
                                                                                 text:
                                                                                     ' ${L10n.current.followers.toLowerCase()}',
@@ -572,7 +570,8 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
                                 Icons.share,
                                 color: theme.colorScheme.primary,
                               ),
-                              onPressed: () => Share.share("$shareBaseUrl/${user.screenName}"),
+                              onPressed: () =>
+                                  SharePlus.instance.share(ShareParams(text: "$shareBaseUrl/${user.screenName}")),
                             ),
                           ]),
                         ),
@@ -625,7 +624,7 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
                     includeReplies: true,
                     pinnedTweets: widget.profile.pinnedTweets,
                     pref: prefs),
-                ProfileMediaGrid(user: user, pref: prefs),
+                ProfileMediaGrid(user: user, pref: prefs, filter: _mediaFilter),
                 ProfileSaved(user: user),
               ],
             ),
@@ -651,6 +650,74 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
               onPressed: _scrollToTop,
               child: const Icon(Icons.arrow_upward),
             ),
+    );
+  }
+}
+
+/// X-style profile tab: always shows its symbol, and expands with the
+/// localized label while selected.
+class _ProfileTabLabel extends StatelessWidget {
+  final NavigationTab tab;
+  final bool selected;
+  final Widget? trailing;
+
+  const _ProfileTabLabel({required this.tab, required this.selected, this.trailing});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(tab.icon, size: 22),
+        if (selected) ...[
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(tab.titleBuilder(context),
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+          if (trailing != null) trailing!,
+        ],
+      ],
+    );
+  }
+}
+
+/// The chevron on the selected Media tab, which opens the photos/videos filter.
+///
+/// It is its own tap target rather than a second meaning for the tab itself:
+/// tapping the tab still returns the grid to the top, as every other tab does.
+class _MediaFilterButton extends StatelessWidget {
+  final MediaFilter value;
+  final ValueChanged<MediaFilter> onChanged;
+
+  const _MediaFilterButton({required this.value, required this.onChanged});
+
+  String _labelFor(BuildContext context, MediaFilter filter) => switch (filter) {
+        MediaFilter.all => L10n.of(context).all,
+        MediaFilter.photos => L10n.of(context).photos,
+        MediaFilter.videos => L10n.of(context).videos,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<MediaFilter>(
+      initialValue: value,
+      onSelected: onChanged,
+      tooltip: L10n.of(context).media,
+      padding: EdgeInsets.zero,
+      itemBuilder: (context) => [
+        for (final filter in MediaFilter.values)
+          PopupMenuItem(value: filter, child: Text(_labelFor(context, filter))),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.only(left: 2),
+        child: Icon(
+          Icons.expand_more,
+          size: 18,
+          color: value == MediaFilter.all ? null : Theme.of(context).colorScheme.primary,
+        ),
+      ),
     );
   }
 }

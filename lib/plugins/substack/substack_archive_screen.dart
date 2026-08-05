@@ -1,0 +1,89 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_triple/flutter_triple.dart';
+import 'package:provider/provider.dart';
+import 'package:qui/generated/l10n.dart';
+import 'package:qui/plugins/substack/substack_models.dart';
+import 'package:qui/plugins/substack/substack_post_card.dart';
+import 'package:qui/plugins/substack/substack_store.dart';
+import 'package:qui/ui/errors.dart';
+
+class SubstackArchiveScreen extends StatefulWidget {
+  final SubstackPublication publication;
+
+  const SubstackArchiveScreen({super.key, required this.publication});
+
+  @override
+  State<SubstackArchiveScreen> createState() => _SubstackArchiveScreenState();
+}
+
+class _SubstackArchiveScreenState extends State<SubstackArchiveScreen> {
+  SubstackArchiveStore? _store;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final store = SubstackArchiveStore(context.read(), widget.publication);
+      setState(() => _store = store);
+      store.refresh();
+    });
+  }
+
+  @override
+  void dispose() {
+    _store?.destroy();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = _store;
+    if (store == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.publication.name)),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.publication.name)),
+      body: ScopedBuilder<SubstackArchiveStore, SubstackFeedSnapshot>(
+        store: store,
+        onError: (_, error) => FullPageErrorWidget(
+          error: error,
+          stackTrace: null,
+          prefix: L10n.of(context).plugin_substack_load_error,
+          onRetry: store.refresh,
+        ),
+        onLoading: (_) => const Center(child: CircularProgressIndicator()),
+        onState: (context, snapshot) {
+          if (snapshot.posts.isEmpty) {
+            return Center(child: Text(L10n.of(context).plugin_substack_feed_empty));
+          }
+          return RefreshIndicator(
+            onRefresh: store.refresh,
+            child: ListView.separated(
+              padding: const EdgeInsets.only(bottom: 24),
+              itemCount: snapshot.posts.length + (snapshot.canLoadMore ? 1 : 0),
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                if (index >= snapshot.posts.length) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Center(
+                      child: OutlinedButton(
+                        onPressed: store.loadMore,
+                        child: Text(L10n.of(context).plugin_substack_load_more),
+                      ),
+                    ),
+                  );
+                }
+                return SubstackPostCard(post: snapshot.posts[index], showSourceBadge: false);
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}

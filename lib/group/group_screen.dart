@@ -12,6 +12,7 @@ import 'package:qui/group/_feed_shell.dart';
 import 'package:qui/group/feed_cache.dart';
 import 'package:qui/group/feed_session_cache.dart';
 import 'package:qui/group/group_model.dart';
+import 'package:qui/group/group_switcher.dart';
 import 'package:qui/tweet/cached_tweet_list.dart';
 import 'package:qui/tweet/tweet_context_scope.dart';
 import 'package:qui/ui/errors.dart';
@@ -41,10 +42,21 @@ class GroupScreen extends StatefulWidget {
 class _GroupScreenState extends State<GroupScreen> {
   late final ScrollController _scrollController;
 
+  // Which group this route currently shows. Switching from the title swaps it
+  // in place rather than pushing another route, so Back always returns to
+  // wherever the first group was opened from, however many groups were visited.
+  GroupScreenArguments? _current;
+
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _current ??= ModalRoute.of(context)!.settings.arguments as GroupScreenArguments;
   }
 
   @override
@@ -53,10 +65,20 @@ class _GroupScreenState extends State<GroupScreen> {
     super.dispose();
   }
 
+  void _switchTo(SubscriptionGroup group) {
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+    setState(() => _current = GroupScreenArguments(id: group.id, name: group.name));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)!.settings.arguments as GroupScreenArguments;
+    final args = _current!;
     return SubscriptionGroupScreen(
+      // A new group needs its own shell state, model and feed; keying by id is
+      // what makes the swap clean instead of half-updating the old one.
+      key: ValueKey(args.id),
       scrollController: _scrollController,
       id: args.id,
       name: args.name,
@@ -64,6 +86,7 @@ class _GroupScreenState extends State<GroupScreen> {
       // The cache key matches the groupId so re-pushing the same group restores
       // the previous tweets and scroll offset.
       cacheKey: args.id,
+      onSwitchGroup: _switchTo,
       actions: const [],
     );
   }
@@ -130,7 +153,15 @@ class _SubscriptionGroupScreenContentState extends State<SubscriptionGroupScreen
 
         // Split the users into chunks, oldest first, to prevent thrashing of all groups when a new user is added
         final filteredUsers = group.id == '-1' ? group.subscriptions.where((elm) => elm.inFeed) : group.subscriptions;
-        final users = filteredUsers.sorted((a, b) => a.createdAt.compareTo(b.createdAt)).toList();
+        final members = filteredUsers.sorted((a, b) => a.createdAt.compareTo(b.createdAt)).toList();
+
+        // Substack publications are members of the group but they are not
+        // searched on X: they have their own source, and leaving them in a
+        // search query would put an empty clause in it.
+        final publications = members.whereType<SubstackSubscription>().toList(growable: false);
+        final subreddits = members.whereType<RedditSubscription>().toList(growable: false);
+        final users =
+            members.where((e) => e is! SubstackSubscription && e is! RedditSubscription).toList(growable: false);
 
         var chunks = partition(users, 16)
             .map((e) => SubscriptionGroupFeedChunk(e, includeReplies, includeRetweets))
@@ -139,6 +170,8 @@ class _SubscriptionGroupScreenContentState extends State<SubscriptionGroupScreen
         return SubscriptionGroupFeed(
           group: group,
           chunks: chunks,
+          publications: publications,
+          subreddits: subreddits,
           includeReplies: includeReplies,
           includeRetweets: includeRetweets,
           mediaOnly: widget.mediaOnly,
@@ -172,13 +205,19 @@ class SubscriptionGroupScreen extends StatefulWidget {
   // Forwarded to SubscriptionGroupFeed — see its docs. Null disables caching.
   final String? cacheKey;
 
+  /// When set, the title becomes a group picker and this is called with the
+  /// chosen group. Null leaves the title as plain text — the home Following tab
+  /// already uses its own feed-tab dropdown there.
+  final ValueChanged<SubscriptionGroup>? onSwitchGroup;
+
   const SubscriptionGroupScreen(
       {super.key,
       required this.scrollController,
       required this.id,
       required this.name,
       this.actions,
-      this.cacheKey});
+      this.cacheKey,
+      this.onSwitchGroup});
 
   @override
   State<SubscriptionGroupScreen> createState() => _SubscriptionGroupScreenState();
@@ -220,7 +259,13 @@ class _SubscriptionGroupScreenState extends State<SubscriptionGroupScreen> {
       scrollController: widget.scrollController,
       groupId: widget.id,
       usesFeedCache: widget.cacheKey != null,
-      titleBuilder: (context) => Text(widget.name),
+      titleBuilder: (context) {
+        final onSwitch = widget.onSwitchGroup;
+        if (onSwitch == null) {
+          return Text(widget.name);
+        }
+        return GroupSwitcherTitle(name: widget.name, currentGroupId: widget.id, onSwitch: onSwitch);
+      },
       bodyBuilder: (context) =>
           SubscriptionGroupScreenContent(id: widget.id, cacheKey: widget.cacheKey, mediaOnly: _mediaOnly),
       actionsBuilder: (context) => [

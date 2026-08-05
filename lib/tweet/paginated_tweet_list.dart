@@ -6,6 +6,8 @@ import 'package:qui/generated/l10n.dart';
 import 'package:qui/group/feed_refresh_controller.dart';
 import 'package:qui/tweet/cached_tweet_list.dart';
 import 'package:qui/tweet/conversation.dart';
+import 'package:qui/tweet/interleaved_items.dart';
+import 'package:qui/tweet/tweet_skeleton.dart';
 import 'package:qui/ui/caught_up_divider.dart';
 import 'package:qui/ui/errors.dart';
 import 'package:qui/utils/paging.dart';
@@ -134,6 +136,9 @@ class PaginatedTweetList extends StatefulWidget {
   final bool Function(TweetChain chain)? isSeen;
   final Key? caughtUpDividerKey;
 
+  /// Posts from somewhere other than X, slotted among the chains by date.
+  final List<InterleavedItem> interleaved;
+
   const PaginatedTweetList({
     super.key,
     required this.feed,
@@ -146,6 +151,7 @@ class PaginatedTweetList extends StatefulWidget {
     this.firstPagePreview,
     this.isSeen,
     this.caughtUpDividerKey,
+    this.interleaved = const [],
   });
 
   @override
@@ -209,7 +215,10 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
   }
 
   void _onControllerChanged() {
-    if (mounted) setState(() {});
+    // PagingListener already rebuilds the list on controller changes; this
+    // extra rebuild only matters for swapping the cached preview out once the
+    // first page arrives, so skip it entirely when there is no preview.
+    if (mounted && widget.firstPagePreview != null) setState(() {});
   }
 
   // Drives the same RefreshIndicator the user pulls down, so the app-bar refresh
@@ -291,7 +300,9 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
         // Recomputed per build from the loaded items, so the boundary shows
         // up even when the first seen chain only arrives on a later page.
         final seen = widget.isSeen;
-        final boundary = seen == null ? null : _caughtUpBoundaryOf(state.items ?? const <TweetChain>[], seen);
+        final loaded = state.items ?? const <TweetChain>[];
+        final boundary = seen == null ? null : _caughtUpBoundaryOf(loaded, seen);
+        final buckets = placeInterleaved(loaded, widget.interleaved);
         return PagedListView<int, TweetChain>(
           padding: EdgeInsets.only(top: 4, bottom: MediaQuery.of(context).padding.bottom),
           state: state,
@@ -300,18 +311,29 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
           builderDelegate: PagedChildBuilderDelegate(
             itemBuilder: (context, chain, index) {
               final conversation = _buildChain(context, chain);
-              if (boundary == null || index != boundary) {
+              final above = index < buckets.length ? buckets[index] : const <InterleavedItem>[];
+              // Anything older than every chain loaded so far rides along with
+              // the last one, so it is on screen rather than waiting for a page
+              // that may never be asked for.
+              final below = index == loaded.length - 1 ? buckets.last : const <InterleavedItem>[];
+              final showsDivider = boundary != null && index == boundary;
+
+              if (above.isEmpty && below.isEmpty && !showsDivider) {
                 return conversation;
               }
+
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  CaughtUpDivider(key: widget.caughtUpDividerKey),
+                  if (showsDivider) CaughtUpDivider(key: widget.caughtUpDividerKey),
+                  for (final item in above) item.build(context),
                   conversation,
+                  for (final item in below) item.build(context),
                 ],
               );
             },
-            firstPageProgressIndicatorBuilder: (context) => const Center(child: CircularProgressIndicator()),
+            firstPageProgressIndicatorBuilder: (context) => const TweetFeedSkeleton(),
+            newPageProgressIndicatorBuilder: (context) => const TweetSkeletonTile(),
             firstPageErrorIndicatorBuilder: (context) => FullPageErrorWidget(
               error: pagingErrorOf(state)?.error,
               stackTrace: pagingErrorOf(state)?.stackTrace,
@@ -324,7 +346,16 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
               prefix: widget.newPageErrorPrefix,
               onRetry: fetchNextPage,
             ),
-            noItemsFoundIndicatorBuilder: (context) => Center(child: Text(widget.emptyMessage)),
+            // A group can hold nothing but subreddits or publications. Its
+            // posts are all interleaved items, and X having no chains for it is
+            // not the same as the feed being empty — reporting "no posts" over
+            // the top of them is what made such a group look broken.
+            noItemsFoundIndicatorBuilder: (context) => buckets.last.isEmpty
+                ? Center(child: Text(widget.emptyMessage))
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [for (final item in buckets.last) item.build(context)],
+                  ),
             noMoreItemsIndicatorBuilder: (context) => widget.feed.pausedByPageCap
                 ? _ZenFeedEndCard(onLoadMore: widget.feed.continuePastCap)
                 : const SizedBox.shrink(),

@@ -6,13 +6,16 @@ import 'package:dart_twitter_api/twitter_api.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:qui/home/edge_swipe.dart';
 import 'package:qui/constants.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/profile/profile.dart';
 import 'package:qui/tweet/_photo.dart';
 import 'package:qui/tweet/_video.dart';
+import 'package:qui/tweet/tweet_chrome.dart';
 import 'package:qui/ui/errors.dart';
 import 'package:qui/ui/press_actions.dart';
+import 'package:qui/ui/x_look_theme.dart';
 import 'package:qui/utils/downloads.dart';
 import 'package:path/path.dart' as path;
 import 'package:pref/pref.dart';
@@ -150,9 +153,7 @@ Future<void> downloadMediaItem(BuildContext context, Media media, String usernam
     fileName,
     prefs: PrefService.of(context, listen: false),
     onStart: () {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(L10n.of(context).downloading_media),
-      ));
+      showWorkingSnackBar(context, L10n.of(context).downloading_media);
     },
     onSuccess: () {
       ScaffoldMessenger.of(context).hideCurrentSnackBar(reason: SnackBarClosedReason.hide);
@@ -211,43 +212,57 @@ class _TweetMediaState extends State<TweetMedia> {
         );
       }
 
-      return Container(
-        margin: const EdgeInsets.only(top: 8, left: 16, right: 16),
-        child: AspectRatio(
-          aspectRatio: largestAspectRatio,
-          child: PageView.builder(
-            controller: _controller,
-            scrollDirection: Axis.horizontal,
-            itemCount: widget.media.length,
-            itemBuilder: (context, index) {
-              var item = widget.media[index];
+      final tokens = XLookTokens.maybeOf(context);
+      final radius = tokens?.mediaRadius ?? kTweetMediaRadius;
 
-              // A video has its own tap controls and must never open the
-              // fullscreen media viewer. Photos and GIFs still open it.
-              final isVideo = item.type == 'video';
+      return RepaintBoundary(
+        child: Container(
+          margin: const EdgeInsets.only(top: 8, left: 16, right: 16),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(radius)),
+          child: AspectRatio(
+            aspectRatio: largestAspectRatio,
+            // A carousel of several images owns horizontal drags that start on
+            // it, so without this a swipe over a post's media could not reach
+            // the home page view. (One image scrolls nowhere, so Flutter never
+            // gives it a drag recogniser and it already passes them through.)
+            child: edgeSwipeToChangeHomePage(
+              context,
+              PageView.builder(
+              controller: _controller,
+              scrollDirection: Axis.horizontal,
+              itemCount: widget.media.length,
+              itemBuilder: (context, index) {
+                var item = widget.media[index];
 
-              return PressActions(
-                onTap: isVideo
-                    ? null
-                    : () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => TweetMediaView(
-                                initialIndex: index,
-                                media: widget.media,
-                                username: widget.username,
-                                tweetId: widget.tweetId))),
-                onInvoke:
-                    item.type == 'photo' ? () => downloadMediaItem(context, item, widget.username) : null,
-                child: _TweetMediaItem(
-                    media: item,
-                    index: index + 1,
-                    mediaIndex: index,
-                    total: widget.media.length,
-                    username: widget.username,
-                    tweetId: widget.tweetId),
-              );
-            },
+                // A video has its own tap controls and must never open the
+                // fullscreen media viewer. Photos and GIFs still open it.
+                final isVideo = item.type == 'video';
+
+                return PressActions(
+                  onTap: isVideo
+                      ? null
+                      : () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => TweetMediaView(
+                                  initialIndex: index,
+                                  media: widget.media,
+                                  username: widget.username,
+                                  tweetId: widget.tweetId))),
+                  onInvoke:
+                      item.type == 'photo' ? () => downloadMediaItem(context, item, widget.username) : null,
+                  child: _TweetMediaItem(
+                      media: item,
+                      index: index + 1,
+                      mediaIndex: index,
+                      total: widget.media.length,
+                      username: widget.username,
+                      tweetId: widget.tweetId),
+                );
+              },
+              ),
+            ),
           ),
         ),
       );
@@ -380,9 +395,7 @@ class _TweetMediaViewState extends State<TweetMediaView> {
                 fileName,
                 prefs: prefs,
                 onStart: () {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(L10n.of(context).downloading_media),
-                  ));
+                  showWorkingSnackBar(context, L10n.of(context).downloading_media);
                 },
                 onSuccess: () {
                   ScaffoldMessenger.of(context).hideCurrentSnackBar(reason: SnackBarClosedReason.hide);
@@ -497,6 +510,6 @@ class _TweetMediaThing extends StatelessWidget {
       media = Text(L10n.of(context).unknown);
     }
 
-    return media;
+    return RepaintBoundary(child: media);
   }
 }

@@ -1,352 +1,316 @@
-import 'dart:convert';
-import 'package:dynamic_color/dynamic_color.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_iconpicker/Models/configuration.dart';
-import 'package:flutter_material_color_picker/flutter_material_color_picker.dart';
-import 'package:flutter_iconpicker/flutter_iconpicker.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_triple/flutter_triple.dart';
+import 'package:pref/pref.dart';
 import 'package:qui/constants.dart';
 import 'package:qui/database/entities.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/group/group_model.dart';
 import 'package:qui/group/group_screen.dart';
-import 'package:qui/subscriptions/users_model.dart';
-import 'package:qui/user.dart';
+import 'package:qui/group/group_tree.dart';
+import 'package:qui/subscriptions/_group_list_item.dart';
+import 'package:qui/subscriptions/_groups_edit.dart';
+import 'package:qui/subscriptions/widgets/group_tile.dart';
+import 'package:qui/ui/errors.dart';
+import 'package:qui/ui/x_controls.dart';
 import 'package:provider/provider.dart';
+import 'package:qui/plugins/plugin.dart';
+import 'package:qui/plugins/plugin_registry.dart';
 
-Future openSubscriptionGroupDialog(BuildContext context, String? id, String name, String icon) {
-  return showDialog(
-      context: context,
-      builder: (context) {
-        return SubscriptionGroupEditDialog(id: id, name: name, icon: icon);
-      });
-}
+export 'package:qui/subscriptions/_groups_edit.dart'
+    show openSubscriptionGroupDialog, SubscriptionGroupEditDialog;
 
-class SubscriptionGroups extends StatefulWidget {
+/// Tiles past this index appear without the entrance stagger.
+const _staggerLimit = 12;
+
+/// The Groups tab: a board of member-faced tiles with search, plus a
+/// drag-to-reorder list while custom ordering is active.
+class SubscriptionGroupsPage extends StatefulWidget {
   final ScrollController scrollController;
 
-  const SubscriptionGroups({super.key, required this.scrollController});
+  const SubscriptionGroupsPage({super.key, required this.scrollController});
 
   @override
-  State<SubscriptionGroups> createState() => _SubscriptionGroupsState();
+  State<SubscriptionGroupsPage> createState() => _SubscriptionGroupsPageState();
 }
 
-class _SubscriptionGroupsState extends State<SubscriptionGroups> {
-  Widget _createGroupCard(
-      String id, String name, String icon, Color? color, int? numberOfMembers, void Function()? onLongPress) {
-    var title = numberOfMembers == null ? name : '$name ($numberOfMembers)';
+class _SubscriptionGroupsPageState extends State<SubscriptionGroupsPage> {
+  final TextEditingController _searchController = TextEditingController();
 
-    return Card(
-      color: color?.harmonizeWith(Theme.of(context).colorScheme.primary),
-      child: InkWell(
-        onTap: () {
-          // Open page with the group's feed
-          Navigator.pushNamed(context, routeGroup, arguments: GroupScreenArguments(id: id, name: name));
-        },
-        onLongPress: onLongPress,
-        // Desktop: right-click opens the same edit dialog as long-press.
-        onSecondaryTap: onLongPress,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(deserializeIconData(icon), size: 24),
-            Text(title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-          ],
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return ListView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+      children: [
+        Icon(Icons.workspaces_outlined, size: 48, color: Theme.of(context).colorScheme.outline),
+        const SizedBox(height: 16),
+        Text(
+          L10n.of(context).no_subscription_groups_yet,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleMedium,
         ),
+        const SizedBox(height: 8),
+        Text(
+          L10n.of(context).no_subscription_groups_description,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        Center(
+          child: FilledButton.icon(
+            style: xPrimaryPillStyle(context),
+            onPressed: () => openSubscriptionGroupDialog(context, null, '', defaultGroupIcon),
+            icon: const Icon(Icons.add),
+            label: Text(L10n.of(context).create_subscription_group),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: XSearchField(
+        controller: _searchController,
+        hintText: L10n.of(context).search,
+        onChanged: (_) => setState(() {}),
       ),
     );
+  }
+
+  /// The board: a compact grid of member-faced tiles.
+  Widget _buildBoard(BuildContext context, List<SubscriptionGroup> groups, {required bool animate}) {
+    final prefs = PrefService.of(context);
+    final columns = (prefs.get<int>(optionSubscriptionGroupsColumns) ?? 2).clamp(2, 3);
+
+    // Large text needs taller tiles, or the title and count would squeeze the
+    // avatar mosaic out of the tile entirely.
+    final textScale = MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 2.0);
+    final baseRatio = columns == 2 ? 168 / 132 : 1.0;
+    final aspectRatio = baseRatio / (1 + (textScale - 1) * 0.55);
+
+    return GridView.builder(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
+      // Build a row ahead so avatars decode before they scroll into view.
+      scrollCacheExtent: const ScrollCacheExtent.pixels(300),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: aspectRatio,
+      ),
+      itemCount: groups.length,
+      itemBuilder: (context, index) {
+        final group = groups[index];
+        final tile = GroupTile(
+          key: ValueKey(group.id),
+          group: group,
+          animate: animate,
+          onTap: () => Navigator.pushNamed(context, routeGroup,
+              arguments: GroupScreenArguments(id: group.id, name: group.name)),
+          onLongPress: () => openSubscriptionGroupDialog(context, group.id, group.name, group.icon),
+        );
+
+        // Only the first screenful is staggered; tiles scrolled into view later
+        // appear immediately rather than animating under the user's thumb.
+        if (!animate || index >= _staggerLimit) {
+          return tile;
+        }
+        return _StaggeredEntrance(delay: Duration(milliseconds: 20 * index), child: tile);
+      },
+    );
+  }
+
+  Widget _buildReorderableList(BuildContext context, List<SubscriptionGroup> groups,
+      {required bool canReorder, Map<String, int> depths = const {}}) {
+    return ReorderableListView.builder(
+      scrollController: widget.scrollController,
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
+      buildDefaultDragHandles: false,
+      itemCount: groups.length,
+      itemBuilder: (context, index) {
+        final group = groups[index];
+        return GroupListItem(
+          key: ValueKey(group.id),
+          group: group,
+          depth: depths[group.id] ?? 0,
+          // No handle means no drag: rearranging a name-sorted or filtered list
+          // would write an order the reader cannot see.
+          reorderIndex: canReorder ? index : null,
+          onLongPress: () => openSubscriptionGroupDialog(context, group.id, group.name, group.icon),
+        );
+      },
+      onReorderItem: (oldIndex, newIndex) {
+        final ids = groups.map((g) => g.id).toList();
+        ids.insert(newIndex, ids.removeAt(oldIndex));
+        context.read<GroupsModel>().saveGroupPositions(ids);
+      },
+    );
+  }
+
+  /// Feeds a plugin provides, listed with the groups so they are reachable from
+  /// where feeds live. Only shown once a plugin has given up its own home tab,
+  /// otherwise the same feed would have two entry points.
+  List<Widget> _pluginFeedRows(BuildContext context) {
+    final prefs = PrefService.of(context);
+
+    return [
+      for (final plugin in builtInPlugins)
+        if (plugin.isEnabled(prefs) && !plugin.showsHomeTab(prefs) && plugin.homeTabPrefKey != null)
+          ListTile(
+            leading: Icon(plugin.icon),
+            title: Text(plugin.title(context)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => _PluginFeedRoute(plugin: plugin)),
+            ),
+          ),
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
     return ScopedBuilder<GroupsModel, List<SubscriptionGroup>>.transition(
       store: context.read<GroupsModel>(),
-      // TODO: Error
+      onError: (_, error) => FullPageErrorWidget(
+        error: error,
+        stackTrace: null,
+        prefix: L10n.of(context).unable_to_load_the_group,
+        onRetry: () => context.read<GroupsModel>().reloadGroups(),
+      ),
       onState: (_, state) {
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(top: 4),
-          gridDelegate:
-              const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 100, childAspectRatio: 20 / 15),
-          itemCount: state.length + 1,
-          itemBuilder: (context, index) {
-            var actualIndex = index;
+        if (state.isEmpty) {
+          return _buildEmptyState(context);
+        }
 
-            if (actualIndex < state.length) {
-              var e = state[actualIndex];
+        final query = _searchController.text.toLowerCase();
+        var groups = query.isEmpty
+            ? state
+            : state.where((g) => g.name.toLowerCase().contains(query)).toList(growable: false);
 
-              return _createGroupCard(e.id, e.name, e.icon, e.color, e.numberOfMembers,
-                  () => openSubscriptionGroupDialog(context, e.id, e.name, e.icon));
-            }
+        // A nested group sits under its parent rather than beside it — but it
+        // is still shown. Hiding it made "put inside group" look like a delete.
+        // While searching the order is left alone: the reader is looking for one
+        // group and should find it wherever it lives.
+        final parents = {for (final g in state) g.id: g.parentId};
+        if (query.isEmpty) {
+          final byId = {for (final g in groups) g.id: g};
+          groups = groupsInTreeOrder(byId.keys, parents).map((id) => byId[id]!).toList(growable: false);
+        }
+        final prefs = PrefService.of(context);
+        final animate = prefs.get<bool>(optionDisableAnimations) != true;
+        final asList = prefs.get<String>(optionSubscriptionGroupsLayout) == subscriptionGroupsLayoutList;
+        // Dragging tiles around a grid is far fiddlier than dragging rows, so
+        // only the list carries drag handles — and only when the order it would
+        // rearrange is the one being shown.
+        final canReorder = context.read<GroupsModel>().orderGroupsBy == 'position' && query.isEmpty;
+        // How far each group is indented, so a nested one reads as nested.
+        final depths = {for (final g in groups) g.id: depthOf(g.id, parents)};
 
-            return null;
-          },
+        return Column(
+          children: [
+            if (state.length > 5) _buildSearchBar(context),
+            ..._pluginFeedRows(context),
+            Expanded(
+              child: asList
+                  ? _buildReorderableList(context, groups, canReorder: canReorder, depths: depths)
+                  : _buildBoard(context, groups, animate: animate),
+            ),
+          ],
         );
       },
     );
   }
 }
 
-class SubscriptionGroupEditDialog extends StatefulWidget {
-  final String? id;
-  final String name;
-  final String icon;
+/// Fades and lifts a tile into place once, shortly after first build.
+class _StaggeredEntrance extends StatefulWidget {
+  final Duration delay;
+  final Widget child;
 
-  const SubscriptionGroupEditDialog({super.key, required this.id, required this.name, required this.icon});
+  const _StaggeredEntrance({required this.delay, required this.child});
 
   @override
-  State<SubscriptionGroupEditDialog> createState() => _SubscriptionGroupEditDialogState();
+  State<_StaggeredEntrance> createState() => _StaggeredEntranceState();
 }
 
-class _SubscriptionGroupEditDialogState extends State<SubscriptionGroupEditDialog> {
-  final GlobalKey<FormState> _formKey = GlobalKey();
-
-  SubscriptionGroupEdit? _group;
-
-  late String? id;
-  late String? name;
-  late String icon;
-  Color? color;
-  Set<String> members = <String>{};
-  List<Subscription> orderedSubscriptions = [];
+class _StaggeredEntranceState extends State<_StaggeredEntrance> {
+  bool _shown = false;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-
-    setState(() {
-      icon = widget.icon;
+    _timer = Timer(widget.delay, () {
+      if (mounted) setState(() => _shown = true);
     });
-
-    final subscriptions = context.read<SubscriptionsModel>().state;
-
-    context.read<GroupsModel>().loadGroupEdit(widget.id).then((group) => setState(() {
-          _group = group;
-
-          id = group.id;
-          name = group.name;
-          icon = group.icon;
-          color = group.color;
-          members = group.members;
-          orderedSubscriptions = [
-            ...subscriptions.where((s) => group.members.contains(s.id)),
-            ...subscriptions.where((s) => !group.members.contains(s.id)),
-          ];
-        }));
   }
 
-  void openDeleteSubscriptionGroupDialog(String id, String name) {
-    showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(L10n.of(context).no),
-              ),
-              TextButton(
-                onPressed: () async {
-                  await context.read<GroupsModel>().deleteGroup(id);
-
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
-                child: Text(L10n.of(context).yes),
-              ),
-            ],
-            title: Text(L10n.of(context).are_you_sure),
-            content: Text(
-              L10n.of(context).are_you_sure_you_want_to_delete_the_subscription_group_name_of_group(name),
-            ),
-          );
-        });
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    var subscriptionsModel = context.read<SubscriptionsModel>();
-
-    var group = _group;
-    if (group == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    List<Widget> buttonsLst1 = [
-      TextButton(
-        onPressed: () {
-          setState(() {
-            if (members.isEmpty) {
-              members = subscriptionsModel.state.map((e) => e.id).toSet();
-            } else {
-              members.clear();
-            }
-          });
-        },
-        child: Text(L10n.of(context).toggle_all),
-      ),
-      TextButton(
-        onPressed: id == null ? null : () => openDeleteSubscriptionGroupDialog(id!, name!),
-        child: Text(L10n.of(context).delete),
-      ),
-    ];
-    List<Widget> buttonsLst2 = [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: Text(L10n.of(context).cancel),
-      ),
-      Builder(builder: (context) {
-        onPressed() async {
-          if (_formKey.currentState!.validate()) {
-            await context.read<GroupsModel>().saveGroup(id, name!, icon, color, members);
-
-            Navigator.pop(context);
-          }
-        }
-
-        return TextButton(
-          onPressed: onPressed,
-          child: Text(L10n.of(context).ok),
-        );
-      }),
-    ];
-    return AlertDialog(
-      actionsOverflowAlignment: OverflowBarAlignment.end,
-      actions: [
-        ...buttonsLst1,
-        ...buttonsLst2,
-      ],
-      content: Form(
-        key: _formKey,
-        child: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      initialValue: group.name,
-                      decoration: InputDecoration(
-                        border: const UnderlineInputBorder(),
-                        hintText: L10n.of(context).name,
-                      ),
-                      onChanged: (value) => setState(() {
-                        name = value;
-                      }),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return L10n.of(context).please_enter_a_name;
-                        }
-
-                        return null;
-                      },
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.palette, color: color),
-                    onPressed: () {
-                      showDialog(
-                          context: context,
-                          builder: (context) {
-                            var selectedColor = color;
-
-                            return AlertDialog(
-                              title: Text(L10n.of(context).pick_a_color),
-                              content: SingleChildScrollView(
-                                child: MaterialColorPicker(
-                                  selectedColor: color ?? Colors.grey,
-                                  onColorChange: (value) => setState(() {
-                                    selectedColor = value;
-                                  }),
-                                ),
-                              ),
-                              actions: <Widget>[
-                                TextButton(
-                                  child: Text(L10n.of(context).cancel),
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                ),
-                                TextButton(
-                                  child: Text(L10n.of(context).ok),
-                                  onPressed: () {
-                                    setState(() {
-                                      color = selectedColor;
-                                    });
-                                    Navigator.of(context).pop();
-                                  },
-                                ),
-                              ],
-                            );
-                          });
-                    },
-                  ),
-                  IconButton(
-                    icon: Icon(deserializeIconData(icon)),
-                    onPressed: () async {
-                      var selectedIcon = await showIconPicker(
-                        context,
-                        configuration: SinglePickerConfiguration(
-                            iconPackModes: [IconPack.material],
-                            title: Text(L10n.of(context).pick_an_icon),
-                            closeChild: Text(L10n.of(context).close),
-                            searchHintText: L10n.of(context).search,
-                            noResultsText: L10n.of(context).no_results_for),
-                      );
-                      if (selectedIcon != null) {
-                        setState(() {
-                          icon = jsonEncode(serializeIcon(selectedIcon));
-                        });
-                      }
-                    },
-                  )
-                ],
-              ),
-              Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: orderedSubscriptions.length,
-                  itemBuilder: (context, index) {
-                    var subscription = orderedSubscriptions[index];
-
-                    var subtitle =
-                        subscription is SearchSubscription ? L10n.current.search_term : '@${subscription.screenName}';
-
-                    var icon = subscription is SearchSubscription
-                        ? const SizedBox(width: 48, child: Icon(Icons.search))
-                        : UserAvatar(uri: subscription.profileImageUrlHttps);
-
-                    return CheckboxListTile(
-                      dense: true,
-                      secondary: icon,
-                      title: Text(subscription.name),
-                      subtitle: Text(subtitle),
-                      selected: members.contains(subscription.id),
-                      value: members.contains(subscription.id),
-                      onChanged: (v) => setState(() {
-                        if (v == null || v == false) {
-                          members.remove(subscription.id);
-                        } else {
-                          members.add(subscription.id);
-                        }
-                      }),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
+    return AnimatedSlide(
+      offset: _shown ? Offset.zero : const Offset(0, 0.06),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      child: AnimatedOpacity(
+        opacity: _shown ? 1 : 0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        child: widget.child,
       ),
     );
+  }
+}
+
+/// Legacy embed point; prefer [SubscriptionGroupsPage].
+class SubscriptionGroups extends StatelessWidget {
+  final ScrollController scrollController;
+
+  const SubscriptionGroups({super.key, required this.scrollController});
+
+  @override
+  Widget build(BuildContext context) {
+    return SubscriptionGroupsPage(scrollController: scrollController);
+  }
+}
+
+/// Hosts a plugin's feed screen as a pushed route, for plugins that no longer
+/// occupy a home tab. The screen brings its own app bar.
+class _PluginFeedRoute extends StatefulWidget {
+  final QuaxPlugin plugin;
+
+  const _PluginFeedRoute({required this.plugin});
+
+  @override
+  State<_PluginFeedRoute> createState() => _PluginFeedRouteState();
+}
+
+class _PluginFeedRouteState extends State<_PluginFeedRoute> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.plugin.homeScreen(scrollController: _scrollController) ?? const SizedBox.shrink();
   }
 }
