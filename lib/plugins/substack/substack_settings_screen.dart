@@ -109,7 +109,17 @@ class _SubstackSettingsScreenState extends State<SubstackSettingsScreen> {
                 leading: pub.logoUrl == null
                     ? const Icon(Icons.newspaper)
                     : ClipOval(
-                        child: ExtendedImage.network(pub.logoUrl!, width: 40, height: 40, fit: BoxFit.cover),
+                        child: ExtendedImage.network(
+                          pub.logoUrl!,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          // Fall back to the icon instead of the default
+                          // "Failed to load" text when the logo can't be fetched.
+                          loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed
+                              ? const Icon(Icons.newspaper)
+                              : state.completedWidget,
+                        ),
                       ),
                 title: Text(pub.name),
                 trailing: IconButton(
