@@ -4,6 +4,7 @@ import 'package:qui/generated/l10n.dart';
 import 'package:qui/home/home_screen.dart';
 import 'package:qui/plugins/plugin.dart';
 import 'package:qui/plugins/substack/substack_screen.dart';
+import 'package:qui/plugins/substack/substack_settings_screen.dart';
 
 class SubstackPlugin extends QuaxPlugin {
   SubstackPlugin();
@@ -40,4 +41,7 @@ class SubstackPlugin extends QuaxPlugin {
   Widget homeScreen({required ScrollController scrollController}) {
     return SubstackScreen(scrollController: scrollController);
   }
+
+  @override
+  Widget? settingsScreen(BuildContext context) => const SubstackSettingsScreen();
 }

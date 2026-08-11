@@ -146,6 +146,8 @@ class TweetTranslateButton extends StatelessWidget {
 
     return GestureDetector(
       onLongPress: onLongPress ?? onTranslate,
+      // Desktop: right-click triggers the same (translate whole thread).
+      onSecondaryTap: onLongPress ?? onTranslate,
       child: tweetFooterIconButton(context, Icons.translate, color, null, onPressed, tooltip),
     );
   }

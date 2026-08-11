@@ -42,6 +42,8 @@ class RedditPostCard extends StatelessWidget {
           // Everywhere else the post can lead. A long press is where Android
           // readers look for it, and the author line offers it outright.
           onLongPress: () => openRedditPostSheet(context, post),
+          // Desktop: right-click reaches the same actions with a mouse.
+          onSecondaryTap: () => openRedditPostSheet(context, post),
           child: Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Column(
