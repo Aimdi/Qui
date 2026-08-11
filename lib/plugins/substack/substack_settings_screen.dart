@@ -30,14 +30,16 @@ class _SubstackSettingsScreenState extends State<SubstackSettingsScreen> {
   }
 
   Future<void> _add() async {
-    final added = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => const SubstackAddScreen()),
     );
-    if (added == true && mounted) {
-      await context.read<SubstackPublicationsStore>().load();
-      if (mounted) await context.read<SubstackFeedStore>().refresh();
-    }
+    // Reload regardless of the result: the add screen may have followed a
+    // publication and popped without a positive result (e.g. the post-preview
+    // confirm path), and re-reading is cheap.
+    if (!mounted) return;
+    await context.read<SubstackPublicationsStore>().load();
+    if (mounted) await context.read<SubstackFeedStore>().refresh();
   }
 
   @override
