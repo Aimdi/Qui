@@ -8,6 +8,7 @@ import 'package:qui/trends/_list.dart';
 import 'package:qui/ui/layout.dart';
 import 'package:qui/ui/deck.dart';
 import 'package:qui/ui/detail_pane.dart';
+import 'package:qui/ui/keyboard_shortcuts.dart';
 
 /// Flare-inspired adaptive chrome for Qui.
 ///
@@ -169,21 +170,31 @@ class _QuiShellState extends State<QuiShell> {
 
     return DetailPaneScope(
       controller: _detailPaneController,
-      child: _DesktopShell(
-        pages: widget.pages,
-        prefs: widget.prefs,
-        currentPage: _currentPage,
-        pageController: _pageController,
-        pageChildren: pages,
-        sideTrendsController: _sideTrendsController,
-        deckScrollController: _deckScrollController,
-        deckKey: _deckKey,
-        deckMode: _deckMode,
-        deckRows: _deckRows,
-        onPageChanged: (page) => setState(() => _currentPage = page),
-        onDestinationSelected: _selectPage,
+      child: DesktopKeyboardShortcuts(
         onSearch: _openSearch,
         onSettings: _openSettings,
+        onClosePane: _detailPaneController.close,
+        onScrollNext: () => scrollFeedByStep(_scrollControllers[_currentPage], direction: 1),
+        onScrollPrevious: () => scrollFeedByStep(_scrollControllers[_currentPage], direction: -1),
+        onSelectTab: (index) {
+          _selectPage(index);
+        },
+        child: _DesktopShell(
+          pages: widget.pages,
+          prefs: widget.prefs,
+          currentPage: _currentPage,
+          pageController: _pageController,
+          pageChildren: pages,
+          sideTrendsController: _sideTrendsController,
+          deckScrollController: _deckScrollController,
+          deckKey: _deckKey,
+          deckMode: _deckMode,
+          deckRows: _deckRows,
+          onPageChanged: (page) => setState(() => _currentPage = page),
+          onDestinationSelected: _selectPage,
+          onSearch: _openSearch,
+          onSettings: _openSettings,
+        ),
       ),
     );
   }

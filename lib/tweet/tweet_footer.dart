@@ -146,6 +146,7 @@ class TweetTranslateButton extends StatelessWidget {
 
     return GestureDetector(
       onLongPress: onLongPress ?? onTranslate,
+      onSecondaryTap: onLongPress ?? onTranslate,
       child: tweetFooterIconButton(context, Icons.translate, color, null, onPressed, tooltip),
     );
   }

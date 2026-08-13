@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pref/pref.dart';
 import 'package:qui/constants.dart';
@@ -24,17 +24,23 @@ class _TablessPlugin extends QuaxPlugin {
   String description(BuildContext context) => 'No feed of its own';
 }
 
-BasePrefService _prefs({bool substackEnabled = true, bool? showTab}) => PrefServiceCache(cache: {
-      optionPluginSubstackEnabled: substackEnabled,
-      if (showTab != null) optionPluginSubstackShowTab: showTab,
-    });
+BasePrefService _prefs({bool substackEnabled = true, bool? showTab}) =>
+    PrefServiceCache(
+      cache: {
+        optionPluginSubstackEnabled: substackEnabled,
+        optionPluginSubstackShowTab: ?showTab,
+      },
+    );
 
 void main() {
   group('optional home tabs', () {
-    test('Substack declares its tab optional; a plugin without a feed does not', () {
-      expect(SubstackPlugin().homeTabPrefKey, optionPluginSubstackShowTab);
-      expect(_TablessPlugin().homeTabPrefKey, isNull);
-    });
+    test(
+      'Substack declares its tab optional; a plugin without a feed does not',
+      () {
+        expect(SubstackPlugin().homeTabPrefKey, optionPluginSubstackShowTab);
+        expect(_TablessPlugin().homeTabPrefKey, isNull);
+      },
+    );
 
     test('the tab is shown unless the preference says otherwise', () {
       final plugin = SubstackPlugin();
@@ -57,8 +63,36 @@ void main() {
         if (plugin.homeTabPrefKey != null) {
           final controller = ScrollController();
           addTearDown(controller.dispose);
-          expect(plugin.homeScreen(scrollController: controller), isNotNull,
-              reason: '${plugin.id} offers to hide a tab it does not have');
+          expect(
+            plugin.homeScreen(scrollController: controller),
+            isNotNull,
+            reason: '${plugin.id} offers to hide a tab it does not have',
+          );
+        }
+      }
+    });
+
+    testWidgets('plugins that can hide their tab expose a settings screen', (
+      tester,
+    ) async {
+      // Without a settings screen, turning the tab off on desktop leaves the
+      // plugin with nowhere to be configured. XTA hides this behind the tab's
+      // own app bar; Qui has to offer the same controls from the plugin store.
+      await tester.pumpWidget(
+        const Directionality(
+          textDirection: TextDirection.ltr,
+          child: SizedBox(),
+        ),
+      );
+      final context = tester.element(find.byType(SizedBox));
+
+      for (final plugin in builtInPlugins) {
+        if (plugin.homeTabPrefKey != null) {
+          expect(
+            plugin.settingsScreen(context),
+            isNotNull,
+            reason: '${plugin.id} can hide its tab but has no settings screen',
+          );
         }
       }
     });

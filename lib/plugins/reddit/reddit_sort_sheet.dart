@@ -3,17 +3,36 @@ import 'package:pref/pref.dart';
 import 'package:qui/constants.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/plugins/reddit/reddit_client.dart';
+import 'package:qui/ui/adaptive_sheet.dart';
 
 /// What each sort is called, and the glyph Reddit's own apps use for it.
-({String label, IconData icon}) redditSortLabel(BuildContext context, RedditSort sort) {
+({String label, IconData icon}) redditSortLabel(
+  BuildContext context,
+  RedditSort sort,
+) {
   final l10n = L10n.of(context);
 
   return switch (sort) {
-    RedditSort.hot => (label: l10n.plugin_reddit_sort_hot, icon: Icons.local_fire_department_outlined),
-    RedditSort.newest => (label: l10n.plugin_reddit_sort_new, icon: Icons.auto_awesome_outlined),
-    RedditSort.top => (label: l10n.plugin_reddit_sort_top, icon: Icons.bar_chart),
-    RedditSort.rising => (label: l10n.plugin_reddit_sort_rising, icon: Icons.trending_up),
-    RedditSort.controversial => (label: l10n.plugin_reddit_sort_controversial, icon: Icons.bolt_outlined),
+    RedditSort.hot => (
+      label: l10n.plugin_reddit_sort_hot,
+      icon: Icons.local_fire_department_outlined,
+    ),
+    RedditSort.newest => (
+      label: l10n.plugin_reddit_sort_new,
+      icon: Icons.auto_awesome_outlined,
+    ),
+    RedditSort.top => (
+      label: l10n.plugin_reddit_sort_top,
+      icon: Icons.bar_chart,
+    ),
+    RedditSort.rising => (
+      label: l10n.plugin_reddit_sort_rising,
+      icon: Icons.trending_up,
+    ),
+    RedditSort.controversial => (
+      label: l10n.plugin_reddit_sort_controversial,
+      icon: Icons.bolt_outlined,
+    ),
   };
 }
 
@@ -28,10 +47,10 @@ Future<RedditSort?> openRedditSortSheet(BuildContext context) async {
   final prefs = PrefService.of(context, listen: false);
   final current = storedRedditSort(prefs);
 
-  final chosen = await showModalBottomSheet<RedditSort>(
+  final chosen = await showAdaptiveSheet<RedditSort>(
     context: context,
-    showDragHandle: true,
-    builder: (sheetContext) => SafeArea(child: _RedditSortSheet(current: current)),
+    builder: (sheetContext) =>
+        SafeArea(child: _RedditSortSheet(current: current)),
   );
 
   if (chosen != null) {
@@ -54,7 +73,10 @@ class _RedditSortSheet extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 16),
-          child: Text(L10n.of(context).plugin_reddit_sort, style: theme.textTheme.titleLarge),
+          child: Text(
+            L10n.of(context).plugin_reddit_sort,
+            style: theme.textTheme.titleLarge,
+          ),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -63,7 +85,8 @@ class _RedditSortSheet extends StatelessWidget {
             runSpacing: 10,
             alignment: WrapAlignment.center,
             children: [
-              for (final sort in RedditSort.values) _RedditSortChip(sort: sort, selected: sort == current),
+              for (final sort in RedditSort.values)
+                _RedditSortChip(sort: sort, selected: sort == current),
             ],
           ),
         ),
@@ -82,7 +105,9 @@ class _RedditSortChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final entry = redditSortLabel(context, sort);
-    final tint = selected ? theme.colorScheme.primary : theme.colorScheme.onSurface;
+    final tint = selected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurface;
 
     return ActionChip(
       avatar: Icon(entry.icon, size: 20, color: tint),

@@ -6,6 +6,7 @@ import 'package:qui/generated/l10n.dart';
 import 'package:qui/plugins/reddit/reddit_client.dart';
 import 'package:qui/plugins/reddit/reddit_listing_screen.dart';
 import 'package:qui/plugins/reddit/reddit_store.dart';
+import 'package:qui/ui/adaptive_sheet.dart';
 import 'package:qui/utils/urls.dart';
 
 /// Everywhere a post can take you, without leaving the feed to find out.
@@ -15,15 +16,15 @@ import 'package:qui/utils/urls.dart';
 /// comments. The rest are the actions that were already possible but buried
 /// inside the thread screen.
 Future<void> openRedditPostSheet(BuildContext context, RedditPost post) {
-  return showModalBottomSheet(
+  return showAdaptiveSheet(
     context: context,
-    showDragHandle: true,
     builder: (sheetContext) => SafeArea(child: _RedditPostSheet(post: post)),
   );
 }
 
 /// The public URL of a post, which is what gets shared and opened outside.
-String redditPostUrl(RedditPost post) => 'https://www.reddit.com${post.permalink}';
+String redditPostUrl(RedditPost post) =>
+    'https://www.reddit.com${post.permalink}';
 
 class _RedditPostSheet extends StatelessWidget {
   final RedditPost post;
@@ -46,7 +47,9 @@ class _RedditPostSheet extends StatelessWidget {
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: theme.textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleMedium!.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         if (author != null)
@@ -58,7 +61,8 @@ class _RedditPostSheet extends StatelessWidget {
         _RedditSheetAction(
           icon: Icons.travel_explore,
           label: 'r/${post.subreddit}',
-          onTap: () => _push(context, RedditListingScreen.subreddit(post.subreddit)),
+          onTap: () =>
+              _push(context, RedditListingScreen.subreddit(post.subreddit)),
         ),
         _RedditFollowAction(subreddit: post.subreddit),
         _RedditSheetAction(
@@ -128,7 +132,11 @@ class _RedditSheetAction extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _RedditSheetAction({required this.icon, required this.label, required this.onTap});
+  const _RedditSheetAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
