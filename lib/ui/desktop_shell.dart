@@ -22,7 +22,8 @@ class QuiShell extends StatefulWidget {
   final List<Widget> Function(
     Map<int, ScrollController> scrollControllers,
     Map<int, FocusNode> focusNodes,
-  ) builder;
+  )
+  builder;
 
   const QuiShell({
     super.key,
@@ -174,8 +175,10 @@ class _QuiShellState extends State<QuiShell> {
         onSearch: _openSearch,
         onSettings: _openSettings,
         onClosePane: _detailPaneController.close,
-        onScrollNext: () => scrollFeedByStep(_scrollControllers[_currentPage], direction: 1),
-        onScrollPrevious: () => scrollFeedByStep(_scrollControllers[_currentPage], direction: -1),
+        onScrollNext: () =>
+            scrollFeedByStep(_scrollControllers[_currentPage], direction: 1),
+        onScrollPrevious: () =>
+            scrollFeedByStep(_scrollControllers[_currentPage], direction: -1),
         onSelectTab: (index) {
           _selectPage(index);
         },
@@ -243,7 +246,9 @@ class _MobileShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
-    final safeIndex = pages.isEmpty ? 0 : currentPage.clamp(0, pages.length - 1);
+    final safeIndex = pages.isEmpty
+        ? 0
+        : currentPage.clamp(0, pages.length - 1);
     return Scaffold(
       drawer: Drawer(
         child: ListView(
@@ -280,7 +285,9 @@ class _MobileShell extends StatelessWidget {
                   ? NavigationDestinationLabelBehavior.alwaysShow
                   : NavigationDestinationLabelBehavior.alwaysHide,
               shadowColor: Colors.transparent,
-              backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surface.withValues(alpha: 0.92),
               height: 64,
               destinations: pages
                   .map(
@@ -335,12 +342,15 @@ class _DesktopShell extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final showLabels = prefs.get(optionShowNavigationLabels) == true;
-    final safeIndex = pages.isEmpty ? 0 : currentPage.clamp(0, pages.length - 1);
+    final safeIndex = pages.isEmpty
+        ? 0
+        : currentPage.clamp(0, pages.length - 1);
     // The right column hosts either the opened thread (master/detail reading
     // pane) or, on the home feed with nothing selected, the trends panel.
     final pane = DetailPaneScope.maybeOf(context);
     final hasDetail = pane != null && pane.hasSelection;
-    final showFeedTrends = !deckMode &&
+    final showFeedTrends =
+        !deckMode &&
         isExpandedLayout(context) &&
         pages.isNotEmpty &&
         pages[safeIndex].id == 'feed';
@@ -364,28 +374,14 @@ class _DesktopShell extends StatelessWidget {
                     const SizedBox(height: 14),
                     Tooltip(
                       message: 'Qui',
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              scheme.primary,
-                              scheme.tertiary,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: scheme.primary.withValues(alpha: 0.28),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'assets/icon.png',
+                          width: 40,
+                          height: 40,
+                          filterQuality: FilterQuality.medium,
                         ),
-                        child: Icon(Icons.bolt_rounded, color: scheme.onPrimary, size: 22),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -399,7 +395,9 @@ class _DesktopShell extends StatelessWidget {
                           return _RailDestination(
                             selected: selected,
                             icon: selected ? page.selectedIcon : page.icon,
-                            label: showLabels ? page.titleBuilder(context) : null,
+                            label: showLabels
+                                ? page.titleBuilder(context)
+                                : null,
                             tooltip: page.titleBuilder(context),
                             onTap: () => onDestinationSelected(index),
                           );
@@ -415,7 +413,11 @@ class _DesktopShell extends StatelessWidget {
                     ),
                     _RailDestination(
                       selected: deckMode,
-                      icon: Icon(deckMode ? Icons.view_column_rounded : Icons.view_column_outlined),
+                      icon: Icon(
+                        deckMode
+                            ? Icons.view_column_rounded
+                            : Icons.view_column_outlined,
+                      ),
                       label: showLabels ? L10n.of(context).deck_mode : null,
                       tooltip: L10n.of(context).deck_mode,
                       onTap: () {
@@ -448,13 +450,17 @@ class _DesktopShell extends StatelessWidget {
                       key: deckKey,
                       pages: pages,
                       focusedIndex: safeIndex,
-                      scrollController: deckRows <= 1 ? deckScrollController : null,
+                      scrollController: deckRows <= 1
+                          ? deckScrollController
+                          : null,
                       rows: deckRows,
                       onFocusChanged: onPageChanged,
                       children: pageChildren,
                     )
                   : ContentFrame(
-                      maxWidth: showRightPane ? quiTimelineMaxWidth + 16 : quiTimelineMaxWidth + 40,
+                      maxWidth: showRightPane
+                          ? quiTimelineMaxWidth + 16
+                          : quiTimelineMaxWidth + 40,
                       child: PageView(
                         controller: pageController,
                         onPageChanged: onPageChanged,
@@ -527,7 +533,9 @@ class _RailDestination extends StatelessWidget {
             child: IconTheme(
               data: IconThemeData(
                 size: 22,
-                color: selected ? scheme.onSecondaryContainer : scheme.onSurfaceVariant,
+                color: selected
+                    ? scheme.onSecondaryContainer
+                    : scheme.onSurfaceVariant,
               ),
               child: Center(child: icon),
             ),
@@ -539,10 +547,10 @@ class _RailDestination extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    fontSize: 10,
-                  ),
+                color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                fontSize: 10,
+              ),
             ),
           ],
         ],
@@ -581,16 +589,25 @@ class _SideDiscoverPanel extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Material(
-            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.55,
+            ),
             borderRadius: BorderRadius.circular(24),
             child: InkWell(
               borderRadius: BorderRadius.circular(24),
               onTap: onOpenSearch,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 child: Row(
                   children: [
-                    Icon(Icons.search, size: 18, color: theme.colorScheme.onSurfaceVariant),
+                    Icon(
+                      Icons.search,
+                      size: 18,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -610,12 +627,12 @@ class _SideDiscoverPanel extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Text(
             l10n.trending,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
-        Expanded(
-          child: TrendsList(scrollController: scrollController),
-        ),
+        Expanded(child: TrendsList(scrollController: scrollController)),
       ],
     );
   }

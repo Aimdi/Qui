@@ -4,7 +4,8 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:flutter/foundation.dart' show LicenseEntryWithLineBreaks, LicenseRegistry;
+import 'package:flutter/foundation.dart'
+    show LicenseEntryWithLineBreaks, LicenseRegistry;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -73,10 +74,11 @@ Future checkForUpdates(context) async {
 
   PackageInfo packageInfo = await PackageInfo.fromPlatform();
   final client = HttpClient();
-  client.userAgent =
-      "Qui/desktop (https://github.com/Aimdi/Qui)";
+  client.userAgent = "Qui/desktop (https://github.com/Aimdi/Qui)";
 
-  final request = await client.getUrl(Uri.parse('https://api.github.com/repos/$githubRepo/releases/latest'));
+  final request = await client.getUrl(
+    Uri.parse('https://api.github.com/repos/$githubRepo/releases/latest'),
+  );
   final response = await request.close();
 
   if (response.statusCode == 200) {
@@ -96,7 +98,10 @@ Future checkForUpdates(context) async {
               title: Text(L10n.of(context).an_update_for_fritter_is_available),
               content: Text(L10n.of(context).view_version_on_github(latestTag)),
               actions: [
-                TextButton(child: Text(L10n.of(context).dismiss), onPressed: () => Navigator.of(context).pop()),
+                TextButton(
+                  child: Text(L10n.of(context).dismiss),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
                 TextButton(
                   child: Text(L10n.of(context).view_on_github),
                   onPressed: () async {
@@ -118,12 +123,17 @@ Future checkForAccounts(context) async {
 
   final accounts = await getAccounts();
   if (accounts.isEmpty) {
+    // Desktop already has [NoAccountErrorWidget] in every feed. A blocking
+    // warning dialog on launch is a second prompt for the same fact.
+    if (isDesktop) return;
     await showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text("⚠️ ${L10n.of(context).not_logged_in}"),
-          content: Text(L10n.of(context).qui_doesnt_work_without_account_please_login),
+          content: Text(
+            L10n.of(context).qui_doesnt_work_without_account_please_login,
+          ),
           actions: [
             TextButton(
               child: Text(L10n.of(context).import_backup),
@@ -329,11 +339,11 @@ Future<void> main() async {
       optionCrashReportsEnabled: false,
       optionCrashGithubRepo: defaultCrashGithubRepo,
       optionCrashGithubToken: '',
-    optionPluginDeepmarksEnabled: false,
-    optionPluginDeepmarksApiBase: '',
-    optionPluginDeepmarksApiKey: '',
-    optionPluginDeepmarksSecretKey: '',
-    optionPluginKarakeepEnabled: false,
+      optionPluginDeepmarksEnabled: false,
+      optionPluginDeepmarksApiBase: '',
+      optionPluginDeepmarksApiKey: '',
+      optionPluginDeepmarksSecretKey: '',
+      optionPluginKarakeepEnabled: false,
       optionPluginKarakeepServerUrl: '',
       optionPluginKarakeepApiKey: '',
       optionSeededPluginTabs: <String>[],
@@ -425,8 +435,14 @@ Future<void> main() async {
     // body via KeyedSubtree, the inner feed reads fresh controllers from the
     // cache. LinkedHashMap iterates in insertion order, and registering here
     // (before any shell exists) guarantees we win.
-    groupsModel.addReloadListener('FeedSessionCache', feedSessionCache.invalidateAll);
-    subscriptionsModel.addReloadListener('FeedSessionCache', feedSessionCache.invalidateAll);
+    groupsModel.addReloadListener(
+      'FeedSessionCache',
+      feedSessionCache.invalidateAll,
+    );
+    subscriptionsModel.addReloadListener(
+      'FeedSessionCache',
+      feedSessionCache.invalidateAll,
+    );
 
     var trendLocationModel = UserTrendLocationModel(prefService);
 
@@ -436,10 +452,18 @@ Future<void> main() async {
     final redditIcons = RedditIcons(redditClient);
     final redditAuth = RedditAuth();
     final redditSubreddits = RedditSubredditsStore(prefService);
-    final redditFeed = RedditFeedStore(redditClient, redditSubreddits, prefService, auth: redditAuth);
+    final redditFeed = RedditFeedStore(
+      redditClient,
+      redditSubreddits,
+      prefService,
+      auth: redditAuth,
+    );
     final substackClient = SubstackClient();
     final substackPublications = SubstackPublicationsStore(prefService);
-    final substackFeed = SubstackFeedStore(substackClient, substackPublications);
+    final substackFeed = SubstackFeedStore(
+      substackClient,
+      substackPublications,
+    );
     final substackAdd = SubstackAddPublicationStore(substackClient);
     final substackRead = SubstackReadStore(prefService);
 
@@ -498,7 +522,10 @@ Future<void> main() async {
             Provider(create: (_) => substackFeed),
             Provider(create: (_) => substackAdd),
             Provider(create: (_) => substackRead),
-            ChangeNotifierProvider(create: (_) => VideoContextState(prefService.get(optionMediaDefaultMute))),
+            ChangeNotifierProvider(
+              create: (_) =>
+                  VideoContextState(prefService.get(optionMediaDefaultMute)),
+            ),
           ],
           child: QuiApp(),
         ),
@@ -517,8 +544,8 @@ class QuiApp extends StatefulWidget {
 }
 
 class _QuiAppState extends State<QuiApp> {
-
-  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>(); // NEW: Navigator key
+  final GlobalKey<NavigatorState> _navigatorKey =
+      GlobalKey<NavigatorState>(); // NEW: Navigator key
 
   String _xLookBackground = xLookBackgroundSystem;
   String _xLookAccent = xLookAccentBlue;
@@ -546,7 +573,10 @@ class _QuiAppState extends State<QuiApp> {
         } else {
           if (splitLocale[1].length == 4) {
             // 4 characters -> unicode_script_subtag
-            _locale = Locale.fromSubtags(languageCode: splitLocale[0], scriptCode: splitLocale[1]);
+            _locale = Locale.fromSubtags(
+              languageCode: splitLocale[0],
+              scriptCode: splitLocale[1],
+            );
           } else {
             // Other than 4 characters -> unicode_region_subtag (country)
             _locale = Locale(splitLocale[0], splitLocale[1]);
@@ -560,7 +590,10 @@ class _QuiAppState extends State<QuiApp> {
     // background; the retired presets have no equivalent and land on System.
     final storedPreset = prefService.get<String>(optionThemePreset);
     if (storedPreset != null && storedPreset != themePresetNone) {
-      prefService.set(optionXLookBackground, xLookBackgroundForPreset(storedPreset));
+      prefService.set(
+        optionXLookBackground,
+        xLookBackgroundForPreset(storedPreset),
+      );
       prefService.set(optionThemePreset, themePresetNone);
     }
 
@@ -590,7 +623,9 @@ class _QuiAppState extends State<QuiApp> {
       // Re-read rather than only rebuild: the value is held in a field, so a
       // rebuild alone would keep showing the answer from before the change —
       // including the one the reset above makes on this very launch.
-      setState(() => _checkUpdates = prefService.get(optionShouldCheckForUpdates));
+      setState(
+        () => _checkUpdates = prefService.get(optionShouldCheckForUpdates),
+      );
     });
 
     prefService.addKeyListener(optionLocale, () {
@@ -601,20 +636,16 @@ class _QuiAppState extends State<QuiApp> {
 
     // Whenever the "true black" preference is toggled, apply the toggle
     prefService.addKeyListener(optionThemeTrueBlack, () {
-      setState(() {
-        });
+      setState(() {});
     });
 
     prefService.addKeyListener(optionThemeMode, () {
-      setState(() {
-        });
+      setState(() {});
     });
 
     prefService.addKeyListener(optionThemeColor, () {
-      setState(() {
-        });
+      setState(() {});
     });
-
 
     prefService.addKeyListener(optionXLookBackground, () {
       setState(() {
@@ -636,14 +667,14 @@ class _QuiAppState extends State<QuiApp> {
 
     prefService.addKeyListener(optionTextScaleFactor, () {
       setState(() {
-        _textScaleFactor = prefService.get<double?>(optionTextScaleFactor) ?? 1.0;
+        _textScaleFactor =
+            prefService.get<double?>(optionTextScaleFactor) ?? 1.0;
       });
     });
   }
 
   @override
   Widget build(BuildContext context) {
-
     final PageTransitionsTheme? pageTransitions = _disableAnimations == true
         ? PageTransitionsTheme(
             builders: {
@@ -656,68 +687,79 @@ class _QuiAppState extends State<QuiApp> {
           )
         : null;
 
-    final systemOverlayStyle = SystemUiOverlayStyle.dark.copyWith(systemNavigationBarColor: Colors.transparent);
+    final systemOverlayStyle = SystemUiOverlayStyle.dark.copyWith(
+      systemNavigationBarColor: Colors.transparent,
+    );
     SystemChrome.setSystemUIOverlayStyle(systemOverlayStyle);
     final systemScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
 
     return MediaQuery(
-      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(_textScaleFactor * systemScaleFactor)),
+      data: MediaQuery.of(context).copyWith(
+        textScaler: TextScaler.linear(_textScaleFactor * systemScaleFactor),
+      ),
       child: DynamicColorBuilder(
         builder: (lightDynamic, darkDynamic) {
           final materialApp = MaterialApp(
-                navigatorKey: _navigatorKey,
-                localizationsDelegates: const [
-                  L10n.delegate,
-                  GlobalMaterialLocalizations.delegate,
-                  GlobalWidgetsLocalizations.delegate,
-                  GlobalCupertinoLocalizations.delegate,
-                ],
-                supportedLocales: L10n.delegate.supportedLocales,
-                locale: _locale,
-                title: 'Qui',
-                theme: xLookThemeData(xLookTokensFor(xLookBackgroundLight, _xLookAccent), pageTransitions),
-                darkTheme: xLookThemeData(xLookDarkTokensFor(_xLookBackground, _xLookAccent), pageTransitions),
-                themeMode: xLookThemeModeFor(_xLookBackground),
-                initialRoute: '/',
-                routes: {
-                  routeHome: (context) => const DefaultPage(),
-                  routeGroup: (context) => const GroupScreen(),
-                  routeProfile: (context) => const ProfileScreen(),
-                  routeSearch: (context) => const ResultsScreen(),
-                  routeSavedFolders: (context) => const SavedFoldersScreen(),
-                  routeSettings: (context) => const SettingsScreen(),
-                  routeSettingsExport: (context) => const SettingsExportScreen(),
-                  routeSettingsHome: (context) => const SettingsHomeFragment(),
-                  routeQuotes: (context) => const QuotesScreen(),
-                  routeTicker: (context) => const TickerScreen(),
-                  routeStatus: (context) => const StatusScreen(),
-                },
-                builder: (context, child) {
-                  if (_checkUpdates && !_updateDialogShown) {
-                    _updateDialogShown = true;
-                    // Use navigatorKey's context for showDialog
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      checkForUpdates(_navigatorKey.currentContext!);
-                    });
-                  }
+            navigatorKey: _navigatorKey,
+            localizationsDelegates: const [
+              L10n.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: L10n.delegate.supportedLocales,
+            locale: _locale,
+            title: 'Qui',
+            theme: xLookThemeData(
+              xLookTokensFor(xLookBackgroundLight, _xLookAccent),
+              pageTransitions,
+            ),
+            darkTheme: xLookThemeData(
+              xLookDarkTokensFor(_xLookBackground, _xLookAccent),
+              pageTransitions,
+            ),
+            themeMode: xLookThemeModeFor(_xLookBackground),
+            initialRoute: '/',
+            routes: {
+              routeHome: (context) => const DefaultPage(),
+              routeGroup: (context) => const GroupScreen(),
+              routeProfile: (context) => const ProfileScreen(),
+              routeSearch: (context) => const ResultsScreen(),
+              routeSavedFolders: (context) => const SavedFoldersScreen(),
+              routeSettings: (context) => const SettingsScreen(),
+              routeSettingsExport: (context) => const SettingsExportScreen(),
+              routeSettingsHome: (context) => const SettingsHomeFragment(),
+              routeQuotes: (context) => const QuotesScreen(),
+              routeTicker: (context) => const TickerScreen(),
+              routeStatus: (context) => const StatusScreen(),
+            },
+            builder: (context, child) {
+              if (_checkUpdates && !_updateDialogShown) {
+                _updateDialogShown = true;
+                // Use navigatorKey's context for showDialog
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  checkForUpdates(_navigatorKey.currentContext!);
+                });
+              }
 
-                  if (!_accountDialogShown) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _accountDialogShown = true;
-                      checkForAccounts(_navigatorKey.currentContext!);
-                    });
-                  }
+              if (!_accountDialogShown) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _accountDialogShown = true;
+                  checkForAccounts(_navigatorKey.currentContext!);
+                });
+              }
 
-                  // Replace the default red screen of death with a slightly friendlier one
-                  ErrorWidget.builder = (FlutterErrorDetails details) => FullPageErrorWidget(
+              // Replace the default red screen of death with a slightly friendlier one
+              ErrorWidget.builder = (FlutterErrorDetails details) =>
+                  FullPageErrorWidget(
                     error: details.exception,
-                    stackTrace: details.stack,
+                    stackTrace: null,
                     prefix: L10n.of(context).something_broke_in_fritter,
                   );
 
-                  return child ?? Container();
-                },
-              );
+              return child ?? Container();
+            },
+          );
 
           // secure_content only implements Android/iOS; on desktop the
           // screenshot guard is skipped and the app renders directly.
@@ -757,8 +799,15 @@ class _DefaultPageState extends State<DefaultPage> {
       return;
     }
     switch (parsed) {
-      case ProfileUriInfo(screenName: final screenName, profileTabIndex: final tab):
-        Navigator.pushNamed(context, routeProfile, arguments: ProfileScreenArguments.fromScreenName(screenName, tab));
+      case ProfileUriInfo(
+        screenName: final screenName,
+        profileTabIndex: final tab,
+      ):
+        Navigator.pushNamed(
+          context,
+          routeProfile,
+          arguments: ProfileScreenArguments.fromScreenName(screenName, tab),
+        );
         return;
       case PostUriInfo(screenName: final screenName, id: final id):
         Navigator.pushNamed(
@@ -768,7 +817,12 @@ class _DefaultPageState extends State<DefaultPage> {
         );
         return;
       case ListUriInfo(id: final id):
-        Navigator.push(context, MaterialPageRoute(builder: (_) => ListImportScreen(initialListId: id)));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ListImportScreen(initialListId: id),
+          ),
+        );
         return;
       case UnknownResult():
         showDialog(
@@ -781,7 +835,8 @@ class _DefaultPageState extends State<DefaultPage> {
               actions: [
                 TextButton(
                   child: Text(L10n.of(context).report),
-                  onPressed: () => openUri(context, 'https://github.com/$githubRepo/issues'),
+                  onPressed: () =>
+                      openUri(context, 'https://github.com/$githubRepo/issues'),
                 ),
                 TextButton(
                   child: Text(L10n.of(context).open_in_browser),
@@ -825,7 +880,11 @@ class _DefaultPageState extends State<DefaultPage> {
         log.warning('Unable to handle an incoming link', err, stackTrace);
 
         if (mounted) {
-          showSnackBar(context, icon: '🔗', message: L10n.of(context).unable_to_open_link);
+          showSnackBar(
+            context,
+            icon: '🔗',
+            message: L10n.of(context).unable_to_open_link,
+          );
         }
       },
     );
@@ -857,8 +916,14 @@ class _DefaultPageState extends State<DefaultPage> {
             title: Text(L10n.current.are_you_sure),
             content: Text(L10n.current.confirm_close_fritter),
             actions: [
-              TextButton(child: Text(L10n.current.no), onPressed: () => Navigator.pop(c, false)),
-              TextButton(child: Text(L10n.current.yes), onPressed: () => Navigator.pop(c, true)),
+              TextButton(
+                child: Text(L10n.current.no),
+                onPressed: () => Navigator.pop(c, false),
+              ),
+              TextButton(
+                child: Text(L10n.current.yes),
+                onPressed: () => Navigator.pop(c, true),
+              ),
             ],
           ),
         );

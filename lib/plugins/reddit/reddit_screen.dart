@@ -9,6 +9,7 @@ import 'package:qui/plugins/reddit/reddit_feed_list.dart';
 import 'package:qui/plugins/reddit/reddit_search_screen.dart';
 import 'package:qui/plugins/reddit/reddit_sort_sheet.dart';
 import 'package:qui/plugins/reddit/reddit_store.dart';
+import 'package:qui/ui/tab_app_bar.dart';
 
 String redditErrorMessage(L10n l10n, Object error) {
   if (error is RedditException) {
@@ -131,7 +132,8 @@ class _RedditScreenState extends State<RedditScreen> {
     final l10n = L10n.of(context);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: tabAppBar(
+        context: context,
         title: Text(l10n.plugin_reddit_title),
         actions: [
           IconButton(

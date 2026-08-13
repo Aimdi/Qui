@@ -5,6 +5,7 @@ import 'package:pref/pref.dart';
 import 'package:provider/provider.dart';
 import 'package:qui/constants.dart';
 import 'package:qui/database/entities.dart';
+import 'package:qui/generated/l10n.dart';
 import 'package:qui/group/_settings.dart';
 import 'package:qui/group/feed_refresh_controller.dart';
 import 'package:qui/group/group_model.dart';
@@ -38,7 +39,8 @@ class GroupFeedShell extends StatefulWidget {
   State<GroupFeedShell> createState() => _GroupFeedShellState();
 }
 
-class _GroupFeedShellState extends State<GroupFeedShell> with AutomaticKeepAliveClientMixin<GroupFeedShell> {
+class _GroupFeedShellState extends State<GroupFeedShell>
+    with AutomaticKeepAliveClientMixin<GroupFeedShell> {
   late final GroupModel _groupModel;
   final FeedRefreshController _feedRefreshController = FeedRefreshController();
   int _refreshCounter = 0;
@@ -48,7 +50,8 @@ class _GroupFeedShellState extends State<GroupFeedShell> with AutomaticKeepAlive
   SubscriptionsModel? _subscriptionsModel;
   GroupsModel? _groupsModel;
 
-  late final String _callbackKey = 'GroupFeedShell-${widget.groupId}-${identityHashCode(this)}';
+  late final String _callbackKey =
+      'GroupFeedShell-${widget.groupId}-${identityHashCode(this)}';
 
   @override
   bool get wantKeepAlive => true;
@@ -64,7 +67,8 @@ class _GroupFeedShellState extends State<GroupFeedShell> with AutomaticKeepAlive
     super.didChangeDependencies();
     final newSubs = context.read<SubscriptionsModel>();
     final newGroups = context.read<GroupsModel>();
-    if (!identical(newSubs, _subscriptionsModel) || !identical(newGroups, _groupsModel)) {
+    if (!identical(newSubs, _subscriptionsModel) ||
+        !identical(newGroups, _groupsModel)) {
       _subscriptionsModel?.removeReloadListener(_callbackKey);
       _groupsModel?.removeReloadListener(_callbackKey);
       _subscriptionsModel = newSubs;
@@ -78,7 +82,9 @@ class _GroupFeedShellState extends State<GroupFeedShell> with AutomaticKeepAlive
   // when this changes, otherwise following someone unrelated would needlessly
   // reload the open timeline.
   String _fingerprint(SubscriptionGroupGet group) {
-    final members = group.subscriptions.map((s) => '${s.id}:${s.inFeed}').join(',');
+    final members = group.subscriptions
+        .map((s) => '${s.id}:${s.inFeed}')
+        .join(',');
     return '$members|${group.includeReplies}|${group.includeRetweets}|${group.popular}|${group.custom}|${group.customRules.cacheKey}';
   }
 
@@ -116,7 +122,8 @@ class _GroupFeedShellState extends State<GroupFeedShell> with AutomaticKeepAlive
   Widget build(BuildContext context) {
     super.build(context);
     final prefs = PrefService.of(context);
-    final deckMode = useDesktopShell(context) && prefs.get(optionDeckMode) == true;
+    final deckMode =
+        useDesktopShell(context) && prefs.get(optionDeckMode) == true;
 
     return Provider<GroupModel>.value(
       value: _groupModel,
@@ -131,55 +138,58 @@ class _GroupFeedShellState extends State<GroupFeedShell> with AutomaticKeepAlive
             final actions = widget.actionsBuilder(context);
             // Deck columns already show a title strip — only keep action icons.
             return deckMode
-              ? Column(
-                  children: [
-                    if (actions.isNotEmpty)
-                      Material(
-                        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
-                        child: SizedBox(
-                          height: 40,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: actions,
+                ? Column(
+                    children: [
+                      if (actions.isNotEmpty)
+                        Material(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surface.withValues(alpha: 0.92),
+                          child: SizedBox(
+                            height: 40,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: actions,
+                            ),
+                          ),
+                        ),
+                      Expanded(
+                        // Feeds attach to PrimaryScrollController (normally from
+                        // NestedScrollView). Wire the shell controller in deck mode.
+                        child: PrimaryScrollController(
+                          controller: widget.scrollController,
+                          child: KeyedSubtree(
+                            key: ValueKey(_refreshCounter),
+                            child: widget.bodyBuilder(context),
                           ),
                         ),
                       ),
-                    Expanded(
-                      // Feeds attach to PrimaryScrollController (normally from
-                      // NestedScrollView). Wire the shell controller in deck mode.
-                      child: PrimaryScrollController(
-                        controller: widget.scrollController,
-                        child: KeyedSubtree(
-                          key: ValueKey(_refreshCounter),
-                          child: widget.bodyBuilder(context),
+                    ],
+                  )
+                : NestedScrollView(
+                    controller: widget.scrollController,
+                    floatHeaderSlivers: true,
+                    headerSliverBuilder: (context, innerBoxIsScrolled) {
+                      return [
+                        SliverAppBar(
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.surface.withValues(alpha: 0.92),
+                          surfaceTintColor: Colors.transparent,
+                          pinned: useDesktopShell(context),
+                          snap: !useDesktopShell(context),
+                          floating: !useDesktopShell(context),
+                          centerTitle: false,
+                          title: widget.titleBuilder(context),
+                          actions: actions,
                         ),
-                      ),
+                      ];
+                    },
+                    body: KeyedSubtree(
+                      key: ValueKey(_refreshCounter),
+                      child: widget.bodyBuilder(context),
                     ),
-                  ],
-                )
-              : NestedScrollView(
-                  controller: widget.scrollController,
-                  floatHeaderSlivers: true,
-                  headerSliverBuilder: (context, innerBoxIsScrolled) {
-                    return [
-                      SliverAppBar(
-                        backgroundColor:
-                            Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
-                        surfaceTintColor: Colors.transparent,
-                        pinned: useDesktopShell(context),
-                        snap: !useDesktopShell(context),
-                        floating: !useDesktopShell(context),
-                        centerTitle: false,
-                        title: widget.titleBuilder(context),
-                        actions: actions,
-                      ),
-                    ];
-                  },
-                  body: KeyedSubtree(
-                    key: ValueKey(_refreshCounter),
-                    child: widget.bodyBuilder(context),
-                  ),
-                );
+                  );
           },
         );
       },
@@ -202,21 +212,30 @@ List<Widget> defaultGroupActions(
 }) {
   return [
     if (showMore)
-      IconButton(icon: const Icon(Icons.build_outlined), onPressed: () => showFeedSettings(context, model)),
+      IconButton(
+        icon: const Icon(Icons.build_outlined),
+        onPressed: () => showFeedSettings(context, model),
+      ),
     if (scrollToTopController != null)
       IconButton(
-          icon: const Icon(Icons.arrow_upward),
-          onPressed: () async => await scrollToTop(context, scrollToTopController)),
+        icon: const Icon(Icons.arrow_upward),
+        onPressed: () async =>
+            await scrollToTop(context, scrollToTopController),
+      ),
     if (showRefresh)
       IconButton(
-          icon: const Icon(Icons.refresh_rounded),
-          tooltip: 'Refresh',
-          onPressed: onRefresh ?? () async => await context.read<FeedRefreshController>().refresh()),
+        icon: const Icon(Icons.refresh_rounded),
+        tooltip: L10n.of(context).refresh,
+        onPressed:
+            onRefresh ??
+            () async => await context.read<FeedRefreshController>().refresh(),
+      ),
     // Settings lives on the desktop rail; keep the AppBar action on compact only.
     if (showSettings && !useDesktopShell(context))
       IconButton(
-          icon: const Icon(Icons.settings_outlined),
-          onPressed: () => Navigator.pushNamed(context, routeSettings)),
+        icon: const Icon(Icons.settings_outlined),
+        onPressed: () => Navigator.pushNamed(context, routeSettings),
+      ),
     ...extra,
   ];
 }

@@ -10,6 +10,7 @@ Future<T?> showAdaptiveSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   bool showDragHandle = true,
+  bool isScrollControlled = false,
 }) {
   if (useDesktopShell(context)) {
     return showDialog<T>(
@@ -17,7 +18,10 @@ Future<T?> showAdaptiveSheet<T>({
       builder: (dialogContext) => Dialog(
         clipBehavior: Clip.antiAlias,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440, maxHeight: 560),
+          constraints: BoxConstraints(
+            maxWidth: 440,
+            maxHeight: isScrollControlled ? 640 : 560,
+          ),
           child: builder(dialogContext),
         ),
       ),
@@ -27,6 +31,8 @@ Future<T?> showAdaptiveSheet<T>({
   return showModalBottomSheet<T>(
     context: context,
     showDragHandle: showDragHandle,
+    isScrollControlled: isScrollControlled,
+    useSafeArea: isScrollControlled,
     builder: builder,
   );
 }
