@@ -143,5 +143,10 @@
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
         </intent>
+        <!-- Android 11+ hides Sherpa / Next-gen Kaldi unless we declare this. -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <package android:name="com.k2fsa.sherpa.onnx.tts.engine" />
     </queries>
 </manifest>

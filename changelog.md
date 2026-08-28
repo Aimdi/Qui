@@ -1,4 +1,12 @@
+## Qui 0.4.1
+
+What's new in Qui 0.4.1:
+  - Vorlesen speaks with Sherpa / Next-gen Kaldi (Android 11 was hiding the engine)
+  - An English-only voice no longer goes silent when the app is in German
+  - Everything from 0.4.0
+
 ## QuaX v4.12.0
+
 
 What's new in QuaX v4.12.0:
   - 🔗 Added intent filters for fixupx.com URLs (#164) (by @uptivuptiz) <sup>[[view modified code]](https://github.com/teskann/quax/commit/8ccdcd2ee57708318127a9f832fd0f7c0077fa22)</sup>
