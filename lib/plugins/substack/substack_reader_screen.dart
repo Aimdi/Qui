@@ -80,6 +80,13 @@ class _SubstackReaderScreenState extends State<SubstackReaderScreen> {
       if (mounted) setState(() => _speaking = false);
     });
 
+    try {
+      final engine = await _tts.getDefaultEngine;
+      if (engine is String && engine.isNotEmpty) {
+        await _tts.setEngine(engine);
+      }
+    } catch (_) {}
+
     final locale = Intl.shortLocale(Intl.getCurrentLocale());
     final language = switch (locale) {
       'zh' => 'zh-CN',
@@ -87,10 +94,27 @@ class _SubstackReaderScreenState extends State<SubstackReaderScreen> {
       'pt' => 'pt-BR',
       _ => locale.contains('_') ? locale.replaceAll('_', '-') : '$locale-${locale.toUpperCase()}',
     };
-    try {
-      await _tts.setLanguage(language);
-    } catch (_) {
-      await _tts.setLanguage('en-US');
+    final candidates = <String>[
+      language,
+      if (language.contains('-')) language.split('-').first,
+      'en-US',
+      'en',
+    ];
+    var bound = false;
+    for (final tag in candidates) {
+      try {
+        final ok = await _tts.isLanguageAvailable(tag);
+        if (ok == true || (ok is num && ok >= 0)) {
+          await _tts.setLanguage(tag);
+          bound = true;
+          break;
+        }
+      } catch (_) {}
+    }
+    if (!bound) {
+      try {
+        await _tts.setLanguage('en-US');
+      } catch (_) {}
     }
     await _tts.setSpeechRate(0.45);
     if (mounted) setState(() => _ttsReady = true);
@@ -259,7 +283,7 @@ class _SubstackReaderScreenState extends State<SubstackReaderScreen> {
     setState(() => _speaking = true);
     for (final chunk in chunks) {
       if (!mounted || !_speaking) break;
-      await _tts.speak(chunk);
+      await _tts.speak(chunk, focus: true);
     }
     if (mounted) setState(() => _speaking = false);
   }
