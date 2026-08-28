@@ -17,7 +17,8 @@ class DesktopCookieLoginScreen extends StatefulWidget {
   const DesktopCookieLoginScreen({super.key});
 
   @override
-  State<DesktopCookieLoginScreen> createState() => _DesktopCookieLoginScreenState();
+  State<DesktopCookieLoginScreen> createState() =>
+      _DesktopCookieLoginScreenState();
 }
 
 class _DesktopCookieLoginScreenState extends State<DesktopCookieLoginScreen> {
@@ -44,7 +45,7 @@ class _DesktopCookieLoginScreenState extends State<DesktopCookieLoginScreen> {
     final guestId = _guestIdController.text.trim();
 
     if (authToken.isEmpty || ct0.isEmpty || screenName.isEmpty) {
-      setState(() => _error = 'auth_token, ct0 and screen name are required');
+      setState(() => _error = L10n.of(context).desktop_login_fields_required);
       return;
     }
 
@@ -84,13 +85,18 @@ class _DesktopCookieLoginScreenState extends State<DesktopCookieLoginScreen> {
           title: Text(L10n.of(context).import_subscriptions),
           content: Text(L10n.of(context).import_subscriptions_text(screenName)),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context).no)),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(L10n.of(context).no),
+            ),
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const SubscriptionImportScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const SubscriptionImportScreen(),
+                  ),
                 );
               },
               child: Text(L10n.of(context).yes),
@@ -116,12 +122,13 @@ class _DesktopCookieLoginScreenState extends State<DesktopCookieLoginScreen> {
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              Text('Sign in to X on desktop', style: theme.textTheme.headlineSmall),
+              Text(
+                L10n.of(context).desktop_login_headline,
+                style: theme.textTheme.headlineSmall,
+              ),
               const SizedBox(height: 8),
               Text(
-                'Open x.com in your browser, log in, then paste the auth_token and ct0 '
-                'cookies (DevTools → Application → Cookies → x.com). Your session stays '
-                'on this machine only.',
+                L10n.of(context).desktop_login_instructions,
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -131,38 +138,38 @@ class _DesktopCookieLoginScreenState extends State<DesktopCookieLoginScreen> {
                   mode: LaunchMode.externalApplication,
                 ),
                 icon: const Icon(Icons.open_in_new),
-                label: const Text('Open X login in browser'),
+                label: Text(L10n.of(context).open_in_browser),
               ),
               const SizedBox(height: 24),
               TextField(
                 controller: _screenNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Screen name (without @)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: L10n.of(context).desktop_login_screen_name,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _authTokenController,
-                decoration: const InputDecoration(
-                  labelText: 'auth_token cookie',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: L10n.of(context).desktop_login_auth_token,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _ct0Controller,
-                decoration: const InputDecoration(
-                  labelText: 'ct0 cookie',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: L10n.of(context).desktop_login_ct0,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _guestIdController,
-                decoration: const InputDecoration(
-                  labelText: 'guest_id cookie (optional)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: L10n.of(context).desktop_login_guest_id,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               if (_error != null) ...[

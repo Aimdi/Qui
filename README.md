@@ -9,42 +9,42 @@
 ![Platforms](https://img.shields.io/badge/Linux%20%7C%20Windows%20%7C%20macOS-desktop-54C5F8?style=for-the-badge&logo=flutter&logoColor=white)
 ![Flutter version](https://img.shields.io/badge/Flutter-3.44+-54C5F8?style=for-the-badge&logo=flutter&logoColor=white)
 
-**Qui** is the **desktop** (PC) counterpart of [XTA](https://github.com/Aimdi/XTA) — a free, open-source, privacy-focused client for X (formerly Twitter). Same local-first design, same feeds and groups, built for Linux, Windows, and macOS with Flutter.
+**Qui** is [XTA](https://github.com/Aimdi/XTA) for the PC. Same app, same local-first X client, same plugins — built for Linux, Windows, and macOS with Flutter.
 
 </div>
 
-## ⚠️ This is a vibe-coded desktop port
+## ⚠️ This is a vibe-coded fork
 
-Qui is forked from [Aimdi/XTA](https://github.com/Aimdi/XTA) (itself a fork of [Teskann/QuaX](https://github.com/Teskann/QuaX)). Desktop support was added so the phone app’s features work on a PC — not every mobile UX detail was redesigned.
+Qui is forked from [Aimdi/XTA](https://github.com/Aimdi/XTA) (itself a fork of [Teskann/QuaX](https://github.com/Teskann/QuaX)). Virtually every change on top of upstream was written by an AI coding agent, directed and tested by a human. It exists so XTA’s features work on a desktop, with chrome that belongs on a PC rather than a stretched phone layout.
 
-- Prefer [XTA](https://github.com/Aimdi/XTA) on Android and **Qui** on desktop.
+- Use [XTA](https://github.com/Aimdi/XTA) on Android and **Qui** on desktop. They stay in feature parity.
 - Issues welcome; fixes will also be vibe coded.
 
 > [!IMPORTANT]
 > An X account is required. On desktop, sign in by pasting your browser cookies (`auth_token` + `ct0`) after logging into x.com. Subscriptions, saved posts, and settings stay local to the app.
 
-## Features (from XTA)
+## Features (same as XTA)
 
-- Local subscriptions and custom **groups** / feeds
-- Media grids, feed order (Recent / Popular), content filters
-- **Zen mode** anti-doomscrolling options
-- Advanced search, quotes, Community Notes in timelines
-- Saved posts / folders, broken-subscription cleanup
-- Themes: seed-color, True Black, Fairy Forest, Pitch Black
+- Local subscriptions and custom **groups** / feeds, including nested groups
+- Media grids, feed order (Recent / Popular), content filters, **Zen mode**
+- Advanced search, quotes, Community Notes, cashtag tickers, polls
+- Saved posts / folders, local likes, broken-subscription cleanup
+- Optional plugins: **Reddit**, **Substack**, Karakeep, Deepmarks
+- X Look theming (Light / Dim / Lights Out + accent)
 
+## Desktop shell
 
-## Desktop shell (Flare-inspired)
+XTA’s phone chrome is replaced with a layout closer to [Flare](https://github.com/DimensionDev/Flare) and TweetDeck, without dropping XTA features:
 
-Qui keeps the **XTA / X-only core** (local subscriptions, groups, reverse-engineered API)
-but presents it with a desktop chrome closer to [Flare](https://github.com/DimensionDev/Flare):
-
-- Left **icon rail** (Home, Subscriptions, Trending, Saved + Search / Settings)
-- **Centered timeline** column (~640px)
+- Left **icon rail** (Home, Subscriptions, Trending, Saved, plugin tabs + Search / Settings)
+- **Centered timeline** column (~640px) and a **reading pane** for opened threads
 - **Trends side panel** on wide windows
-- Flat post cards with hairline dividers (compact still uses mobile cards)
-- **Deck mode** — side-by-side columns for each home tab (TweetDeck / Flare style); toggle from the rail or Settings → Theme
+- **Deck mode** — side-by-side columns for each home tab
+- Keyboard: `j`/`k` next/previous post, `/` search, `Esc` close pane, `1`–`9` switch tabs
+- Right-click matches XTA’s long-press actions (save folder, translate thread, Reddit post menu)
+- Plugin settings (Reddit sign-in, Substack publications, …) stay reachable from Settings → Plugin store when the plugin tab is hidden
 
-Qui is **not** a multi-network client — Mastodon/Bluesky/RSS live in Flare; Qui stays an X client.
+Qui is X-first, not a multi-network client. Mastodon/Bluesky/RSS live in Flare; Reddit and Substack here are the same optional XTA plugins.
 
 ## Platforms
 

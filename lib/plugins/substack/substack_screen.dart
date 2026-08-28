@@ -9,6 +9,7 @@ import 'package:qui/plugins/substack/substack_models.dart';
 import 'package:qui/plugins/substack/substack_post_card.dart';
 import 'package:qui/plugins/substack/substack_store.dart';
 import 'package:qui/ui/errors.dart';
+import 'package:qui/ui/tab_app_bar.dart';
 
 class SubstackScreen extends StatefulWidget {
   final ScrollController scrollController;
@@ -49,7 +50,8 @@ class _SubstackScreenState extends State<SubstackScreen> {
     final feed = context.read<SubstackFeedStore>();
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: tabAppBar(
+        context: context,
         title: Text(L10n.of(context).plugin_substack_title),
         actions: [
           IconButton(
@@ -79,7 +81,11 @@ class _SubstackScreenState extends State<SubstackScreen> {
                 controller: widget.scrollController,
                 children: [
                   const SizedBox(height: 80),
-                  Icon(Icons.newspaper_outlined, size: 48, color: Theme.of(context).colorScheme.outline),
+                  Icon(
+                    Icons.newspaper_outlined,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                   const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -117,7 +123,8 @@ class _SubstackScreenState extends State<SubstackScreen> {
                 prefix: L10n.of(context).plugin_substack_load_error,
                 onRetry: feed.refresh,
               ),
-              onLoading: (_) => const Center(child: CircularProgressIndicator()),
+              onLoading: (_) =>
+                  const Center(child: CircularProgressIndicator()),
               onState: (context, snapshot) {
                 final children = <Widget>[
                   _FollowedStrip(
@@ -125,7 +132,10 @@ class _SubstackScreenState extends State<SubstackScreen> {
                     onOpen: (pub) {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => SubstackArchiveScreen(publication: pub)),
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              SubstackArchiveScreen(publication: pub),
+                        ),
                       );
                     },
                     onRemove: (id) async {
@@ -138,8 +148,15 @@ class _SubstackScreenState extends State<SubstackScreen> {
                 if (snapshot.failedCount > 0) {
                   children.add(
                     ListTile(
-                      leading: Icon(Icons.warning_amber_outlined, color: Theme.of(context).colorScheme.error),
-                      title: Text(L10n.of(context).plugin_substack_partial_error(snapshot.failedCount)),
+                      leading: Icon(
+                        Icons.warning_amber_outlined,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      title: Text(
+                        L10n.of(
+                          context,
+                        ).plugin_substack_partial_error(snapshot.failedCount),
+                      ),
                     ),
                   );
                 }
@@ -147,7 +164,9 @@ class _SubstackScreenState extends State<SubstackScreen> {
                 if (snapshot.posts.isEmpty) {
                   children.addAll([
                     const SizedBox(height: 48),
-                    Center(child: Text(L10n.of(context).plugin_substack_feed_empty)),
+                    Center(
+                      child: Text(L10n.of(context).plugin_substack_feed_empty),
+                    ),
                   ]);
                   return ListView(
                     controller: widget.scrollController,
@@ -158,23 +177,34 @@ class _SubstackScreenState extends State<SubstackScreen> {
                 return ListView.separated(
                   controller: widget.scrollController,
                   padding: const EdgeInsets.only(bottom: 24),
-                  itemCount: 1 + snapshot.posts.length + (snapshot.canLoadMore ? 1 : 0),
+                  itemCount:
+                      1 +
+                      snapshot.posts.length +
+                      (snapshot.canLoadMore ? 1 : 0),
                   // The cards carry their own hairline, as posts do everywhere else.
                   separatorBuilder: (_, _) => const SizedBox.shrink(),
                   itemBuilder: (context, index) {
                     if (index == 0) {
-                      return Column(mainAxisSize: MainAxisSize.min, children: children);
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: children,
+                      );
                     }
                     final postIndex = index - 1;
                     if (postIndex < snapshot.posts.length) {
-                      return SubstackPostCard(post: snapshot.posts[postIndex], showSourceBadge: false);
+                      return SubstackPostCard(
+                        post: snapshot.posts[postIndex],
+                        showSourceBadge: false,
+                      );
                     }
                     return Padding(
                       padding: const EdgeInsets.all(16),
                       child: Center(
                         child: OutlinedButton(
                           onPressed: feed.loadMore,
-                          child: Text(L10n.of(context).plugin_substack_load_more),
+                          child: Text(
+                            L10n.of(context).plugin_substack_load_more,
+                          ),
                         ),
                       ),
                     );
@@ -215,13 +245,20 @@ class _FollowedStrip extends StatelessWidget {
             avatar: pub.logoUrl == null
                 ? const Icon(Icons.newspaper, size: 18)
                 : ClipOval(
-                    child: ExtendedImage.network(pub.logoUrl!, width: 24, height: 24, fit: BoxFit.cover),
+                    child: ExtendedImage.network(
+                      pub.logoUrl!,
+                      width: 24,
+                      height: 24,
+                      fit: BoxFit.cover,
+                    ),
                   ),
             label: Text(pub.name),
             onPressed: () => onOpen(pub),
             onDeleted: () => onRemove(pub.id),
             deleteIcon: const Icon(Icons.close, size: 16),
-            deleteButtonTooltipMessage: L10n.of(context).plugin_substack_unfollow,
+            deleteButtonTooltipMessage: L10n.of(
+              context,
+            ).plugin_substack_unfollow,
           );
         },
       ),

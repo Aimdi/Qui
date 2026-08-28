@@ -1,20 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_triple/flutter_triple.dart';
 import 'package:pref/pref.dart';
 import 'package:provider/provider.dart';
 import 'package:qui/constants.dart';
 import 'package:qui/generated/l10n.dart';
-import 'package:qui/plugins/reddit/reddit_auth.dart';
-import 'package:qui/plugins/reddit/reddit_login_desktop.dart';
-import 'package:qui/plugins/reddit/reddit_login_webview.dart';
+import 'package:qui/plugins/reddit/reddit_actions.dart';
 import 'package:qui/plugins/reddit/reddit_client.dart';
 import 'package:qui/plugins/reddit/reddit_feed_list.dart';
 import 'package:qui/plugins/reddit/reddit_search_screen.dart';
 import 'package:qui/plugins/reddit/reddit_sort_sheet.dart';
 import 'package:qui/plugins/reddit/reddit_store.dart';
-import 'package:qui/subscriptions/users_model.dart';
-import 'package:qui/ui/errors.dart';
-import 'package:qui/utils/desktop_files.dart';
+import 'package:qui/ui/tab_app_bar.dart';
 
 String redditErrorMessage(L10n l10n, Object error) {
   if (error is RedditException) {
@@ -31,7 +26,9 @@ String redditErrorMessage(L10n l10n, Object error) {
     // The translated sentence says what to do; the detail says what actually
     // happened. Without it a refusal, a timeout and a reshaped response all
     // read the same, and "it doesn't work" is all anyone can report back.
-    return error.detail.isEmpty ? explanation : '$explanation\n\n${error.detail}';
+    return error.detail.isEmpty
+        ? explanation
+        : '$explanation\n\n${error.detail}';
   }
   return '$error';
 }
@@ -83,7 +80,11 @@ class _RedditScreenState extends State<RedditScreen> {
           child: ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Icon(_signedIn ? Icons.logout : Icons.login),
-            title: Text(_signedIn ? l10n.plugin_reddit_sign_out : l10n.plugin_reddit_sign_in),
+            title: Text(
+              _signedIn
+                  ? l10n.plugin_reddit_sign_out
+                  : l10n.plugin_reddit_sign_in,
+            ),
           ),
         ),
         PopupMenuItem(
@@ -104,10 +105,18 @@ class _RedditScreenState extends State<RedditScreen> {
 
   Future<void> _onMenuSelected(String value, BasePrefService prefs) async {
     if (value == _menuSignIn) {
-      return _signedIn ? _signOut() : _signIn();
+      if (_signedIn) {
+        await signOutReddit(context);
+      } else {
+        await signInReddit(context);
+      }
+      if (mounted) setState(() {});
+      return;
     }
     if (value == _menuClientId) {
-      return _editClientId();
+      await editRedditClientId(context);
+      if (mounted) setState(() {});
+      return;
     }
 
     await prefs.set(optionPluginRedditSource, value);
@@ -116,235 +125,61 @@ class _RedditScreenState extends State<RedditScreen> {
     }
   }
 
-  Future<void> _editClientId() async {
-    final prefs = PrefService.of(context, listen: false);
-    final controller = TextEditingController(text: prefs.get<String>(optionPluginRedditClientId) ?? '');
-
-    final saved = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) {
-        final l10n = L10n.of(dialogContext);
-        return AlertDialog(
-          title: Text(l10n.plugin_reddit_client_id),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l10n.plugin_reddit_client_id_help, style: Theme.of(dialogContext).textTheme.bodySmall),
-              const SizedBox(height: 8),
-              // Reddit rejects the login unless the registered app carries this
-              // exact redirect, and it is not guessable — so it is stated here
-              // rather than left to be discovered.
-              Text(
-                l10n.plugin_reddit_redirect_uri_help(RedditAuth.redirectUri),
-                style: Theme.of(dialogContext).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                autocorrect: false,
-                decoration: InputDecoration(hintText: l10n.plugin_reddit_client_id),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-              child: Text(l10n.save),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (saved == null || !mounted) return;
-    await prefs.set(optionPluginRedditClientId, saved);
-    context.read<RedditClient>().forgetToken();
-    if (mounted) {
-      await context.read<RedditFeedStore>().refresh();
-    }
-  }
-
-  bool get _signedIn => (PrefService.of(context, listen: false).get<String>(optionPluginRedditRefreshToken) ?? '')
-      .isNotEmpty;
-
-  /// Signing in gets the reader their own account's rate limits, which is the
-  /// most reliable route Reddit offers. It still needs a client id: the login
-  /// authorises *this app*, and Reddit has to know which app that is.
-  Future<void> _signIn() async {
-    final prefs = PrefService.of(context, listen: false);
-    final clientId = prefs.get<String>(optionPluginRedditClientId) ?? '';
-    if (clientId.trim().isEmpty) {
-      await _editClientId();
-      return;
-    }
-
-    // Echoed back by Reddit and checked on return, so a code from anywhere
-    // else is refused.
-    final state = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
-    // webview_flutter has no Linux/Windows implementation, so desktop opens
-    // the system browser and takes the redirect back by paste instead. Both
-    // screens pop the same authorization code, so everything after this line
-    // is shared.
-    final code = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => isDesktop
-            ? RedditLoginDesktop(clientId: clientId, state: state)
-            : RedditLoginWebview(clientId: clientId, state: state),
-      ),
-    );
-
-    if (code == null || !mounted) return;
-
-    try {
-      final refreshToken = await context.read<RedditAuth>().exchangeCode(clientId: clientId, code: code);
-      await prefs.set(optionPluginRedditRefreshToken, refreshToken);
-      if (mounted) {
-        setState(() {});
-        // The webview closing is not by itself proof the token was accepted.
-        showSnackBar(context, icon: '✅', message: L10n.of(context).plugin_reddit_signed_in);
-        await context.read<RedditFeedStore>().refresh();
-      }
-    } on RedditException catch (e) {
-      if (mounted) {
-        showSnackBar(context, icon: '🔒', message: '${L10n.of(context).plugin_reddit_sign_in_failed}\n${e.detail}');
-      }
-    }
-  }
-
-  Future<void> _signOut() async {
-    final prefs = PrefService.of(context, listen: false);
-    await prefs.set(optionPluginRedditRefreshToken, '');
-    if (mounted) {
-      setState(() {});
-      await context.read<RedditFeedStore>().refresh();
-    }
-  }
-
-  Future<void> _addSubreddit() async {
-    final controller = TextEditingController();
-    final entered = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) {
-        final l10n = L10n.of(dialogContext);
-        return AlertDialog(
-          title: Text(l10n.plugin_reddit_add),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            autocorrect: false,
-            decoration: const InputDecoration(hintText: 'r/dartlang'),
-            onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-              child: Text(l10n.ok),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (entered == null || entered.isEmpty || !mounted) return;
-
-    if (normaliseSubreddit(entered) == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(L10n.of(context).plugin_reddit_error_not_found)));
-      return;
-    }
-
-    await context.read<RedditSubredditsStore>().add(entered);
-    if (mounted) {
-      await _refreshAfterChange(context);
-    }
-  }
-
-  /// The feed and the subscription list both have to hear about it: a subreddit
-  /// is a group member now, and the group editor reads that list rather than
-  /// the store this screen keeps.
-  static Future<void> _refreshAfterChange(BuildContext context) async {
-    final subscriptions = context.read<SubscriptionsModel>();
-    await context.read<RedditFeedStore>().refresh();
-    await subscriptions.reloadSubscriptions();
-  }
-
-  Future<void> _manageSubreddits() async {
-    await showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        final store = sheetContext.read<RedditSubredditsStore>();
-        return SafeArea(
-          child: ScopedBuilder<RedditSubredditsStore, List<String>>(
-            store: store,
-            onState: (_, names) => ListView(
-              shrinkWrap: true,
-              children: [
-                for (final name in names)
-                  ListTile(
-                    title: Text('r/$name'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () async {
-                        await store.remove(name);
-                        if (sheetContext.mounted) {
-                          await _refreshAfterChange(sheetContext);
-                        }
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+  bool get _signedIn => redditSignedIn(PrefService.of(context, listen: false));
 
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: tabAppBar(
+        context: context,
         title: Text(l10n.plugin_reddit_title),
         actions: [
           IconButton(
             tooltip: l10n.plugin_reddit_sort,
-            icon: Icon(redditSortLabel(context, storedRedditSort(PrefService.of(context))).icon),
+            icon: Icon(
+              redditSortLabel(
+                context,
+                storedRedditSort(PrefService.of(context)),
+              ).icon,
+            ),
             onPressed: () async {
-              if (await openRedditSortSheet(context) != null && mounted) {
-                await context.read<RedditFeedStore>().refresh();
-              }
+              final chosen = await openRedditSortSheet(context);
+              if (chosen == null || !context.mounted) return;
+              await context.read<RedditFeedStore>().refresh();
             },
           ),
           IconButton(
             tooltip: l10n.plugin_reddit_search_hint,
             icon: const Icon(Icons.search),
             onPressed: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const RedditSearchScreen())),
+              context,
+              MaterialPageRoute(builder: (_) => const RedditSearchScreen()),
+            ),
           ),
           IconButton(
             tooltip: l10n.plugin_reddit_add,
             icon: const Icon(Icons.add),
-            onPressed: _addSubreddit,
+            onPressed: () async {
+              await addRedditSubreddit(context);
+              if (mounted) setState(() {});
+            },
           ),
           IconButton(
             tooltip: l10n.subscriptions,
             icon: const Icon(Icons.list),
-            onPressed: _manageSubreddits,
+            onPressed: () async {
+              await manageRedditSubreddits(context);
+              if (mounted) setState(() {});
+            },
           ),
           _sourceMenu(context),
         ],
       ),
       body: RedditFeedList(
         scrollController: widget.scrollController,
-        onAddSubreddit: _addSubreddit,
+        onAddSubreddit: () => addRedditSubreddit(context),
       ),
     );
   }

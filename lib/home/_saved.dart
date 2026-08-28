@@ -22,6 +22,7 @@ import 'package:qui/saved/saved_tweet_folder_model.dart';
 import 'package:qui/saved/saved_tweet_model.dart';
 import 'package:qui/tweet/tweet.dart';
 import 'package:qui/ui/errors.dart';
+import 'package:qui/ui/layout.dart';
 import 'package:qui/ui/press_actions.dart';
 import 'package:pref/pref.dart';
 import 'package:provider/provider.dart';
@@ -30,13 +31,18 @@ class SavedScreen extends StatefulWidget {
   final ScrollController scrollController;
   final bool? showTitle;
 
-  const SavedScreen({super.key, required this.scrollController, this.showTitle});
+  const SavedScreen({
+    super.key,
+    required this.scrollController,
+    this.showTitle,
+  });
 
   @override
   State<SavedScreen> createState() => _SavedScreenState();
 }
 
-class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClientMixin<SavedScreen> {
+class _SavedScreenState extends State<SavedScreen>
+    with AutomaticKeepAliveClientMixin<SavedScreen> {
   // Selected folder filter: savedTabAll, savedTabUnfiled, or a folder id.
   String _filter = savedTabAll;
   bool _mediaOnly = false;
@@ -90,8 +96,13 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
 
   // If the selected tab is no longer reachable (folder deleted elsewhere, or its
   // built-in tab was hidden in settings), fall back to "All".
-  void _reconcileFilter(List<SavedTweetFolder> folders, {required bool showUnfiled, required bool showFavorites}) {
-    var reachable = _filter == savedTabAll ||
+  void _reconcileFilter(
+    List<SavedTweetFolder> folders, {
+    required bool showUnfiled,
+    required bool showFavorites,
+  }) {
+    var reachable =
+        _filter == savedTabAll ||
         (_filter == savedTabUnfiled && showUnfiled && folders.isNotEmpty) ||
         (_filter == savedTabFavorites && showFavorites) ||
         folders.any((f) => f.id == _filter);
@@ -123,13 +134,17 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: constraints.maxHeight),
           child: Center(
-            child: Text(_query.isNotEmpty
-                ? L10n.of(context).no_posts_match_your_search
-                : switch (_filter) {
-                    savedTabAll => L10n.of(context).you_have_not_saved_any_tweets_yet,
-                    savedTabFavorites => L10n.of(context).no_liked_posts_yet,
-                    _ => L10n.of(context).folder_is_empty,
-                  }),
+            child: Text(
+              _query.isNotEmpty
+                  ? L10n.of(context).no_posts_match_your_search
+                  : switch (_filter) {
+                      savedTabAll => L10n.of(
+                        context,
+                      ).you_have_not_saved_any_tweets_yet,
+                      savedTabFavorites => L10n.of(context).no_liked_posts_yet,
+                      _ => L10n.of(context).folder_is_empty,
+                    },
+            ),
           ),
         ),
       ),
@@ -152,7 +167,9 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
         json['user']?['name'] as String?,
         json['user']?['screen_name'] as String?,
       ];
-      return haystacks.any((h) => h != null && h.toLowerCase().contains(needle));
+      return haystacks.any(
+        (h) => h != null && h.toLowerCase().contains(needle),
+      );
     } catch (_) {
       return false;
     }
@@ -181,7 +198,10 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
     );
   }
 
-  Widget _buildList({required int itemCount, required SavedTweetTile Function(int) tileAt}) {
+  Widget _buildList({
+    required int itemCount,
+    required SavedTweetTile Function(int) tileAt,
+  }) {
     return ListView.builder(
       controller: widget.scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
@@ -202,32 +222,47 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
       if (tweet.idStr == null) {
         continue;
       }
-      chains.add(TweetChain(id: tweet.idStr!, tweets: [tweet], isPinned: false));
+      chains.add(
+        TweetChain(id: tweet.idStr!, tweets: [tweet], isPinned: false),
+      );
     }
     return mediaItemsFromChains(chains);
   }
 
-  Widget _buildMediaGrid(Iterable<String?> contents, {required Future<void> Function(String id) onDelete}) {
+  Widget _buildMediaGrid(
+    Iterable<String?> contents, {
+    required Future<void> Function(String id) onDelete,
+  }) {
     return RefreshIndicator(
       onRefresh: _refresh,
       child: StaticMediaGrid(
         items: _mediaItemsOf(contents),
         emptyMessage: L10n.of(context).could_not_find_any_posts_with_media,
-        onLongPressItem: (item) => _confirmRemoveFromGallery(item.tweetId, onDelete),
+        onLongPressItem: (item) =>
+            _confirmRemoveFromGallery(item.tweetId, onDelete),
       ),
     );
   }
 
   // Long-pressing a tile in the saved gallery removes that post — handy for
   // clearing the dead "not available" ones without leaving gallery mode.
-  Future<void> _confirmRemoveFromGallery(String id, Future<void> Function(String id) onDelete) async {
+  Future<void> _confirmRemoveFromGallery(
+    String id,
+    Future<void> Function(String id) onDelete,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(L10n.of(context).are_you_sure),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(L10n.of(context).cancel)),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(L10n.of(context).delete)),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(L10n.of(context).cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(L10n.of(context).delete),
+          ),
         ],
       ),
     );
@@ -259,7 +294,11 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
       onState: (context, folders) {
         // Reconcile before the empty check, otherwise deleting the last folder would
         // leave `_filter` stranded on a now-deleted id (the strip returns early).
-        _reconcileFilter(folders, showUnfiled: showUnfiled, showFavorites: showFavorites);
+        _reconcileFilter(
+          folders,
+          showUnfiled: showUnfiled,
+          showFavorites: showFavorites,
+        );
 
         // With no folders, only show the strip when the Favorites tab is available to
         // switch to — otherwise there is nothing to switch between (just "All").
@@ -270,17 +309,32 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
         var chips = <Widget>[];
         for (var token in orderedSavedTabs(folders, storedOrder)) {
           if (token == savedTabAll) {
-            if (showAll) chips.add(_folderChip(label: L10n.of(context).all, value: savedTabAll));
+            if (showAll)
+              chips.add(
+                _folderChip(label: L10n.of(context).all, value: savedTabAll),
+              );
           } else if (token == savedTabUnfiled) {
             // "Unfiled" only makes sense with folders — otherwise it duplicates "All".
             if (showUnfiled && folders.isNotEmpty) {
-              chips.add(_folderChip(label: L10n.of(context).unfiled, value: savedTabUnfiled));
+              chips.add(
+                _folderChip(
+                  label: L10n.of(context).unfiled,
+                  value: savedTabUnfiled,
+                ),
+              );
             }
           } else if (token == savedTabFavorites) {
-            if (showFavorites) chips.add(_folderChip(label: L10n.of(context).favorites, value: savedTabFavorites));
+            if (showFavorites)
+              chips.add(
+                _folderChip(
+                  label: L10n.of(context).favorites,
+                  value: savedTabFavorites,
+                ),
+              );
           } else {
             var matches = folders.where((f) => f.id == token);
-            if (matches.isNotEmpty) chips.add(_folderChip(label: matches.first.name, value: token));
+            if (matches.isNotEmpty)
+              chips.add(_folderChip(label: matches.first.name, value: token));
           }
         }
 
@@ -320,9 +374,13 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(label),
-                if (value == savedTabFavorites && _filter == savedTabFavorites) ...[
+                if (value == savedTabFavorites &&
+                    _filter == savedTabFavorites) ...[
                   const SizedBox(width: 4),
-                  Icon(_likesByGroup ? Icons.expand_less : Icons.expand_more, size: 18),
+                  Icon(
+                    _likesByGroup ? Icons.expand_less : Icons.expand_more,
+                    size: 18,
+                  ),
                 ],
               ],
             ),
@@ -382,7 +440,11 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
               title: Text(L10n.of(sheetContext).delete),
               onTap: () async {
                 Navigator.pop(sheetContext);
-                var deleted = await showDeleteFolderDialog(context, folderModel, folder);
+                var deleted = await showDeleteFolderDialog(
+                  context,
+                  folderModel,
+                  folder,
+                );
                 if (deleted && mounted && _filter == folderId) {
                   setState(() => _filter = savedTabAll);
                 }
@@ -417,11 +479,17 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
       ),
       onLoading: (_) => const Center(child: CircularProgressIndicator()),
       onState: (_, data) {
-        var filtered = _applySearch(_applyFilter(data), (SavedTweet e) => e.content);
+        var filtered = _applySearch(
+          _applyFilter(data),
+          (SavedTweet e) => e.content,
+        );
 
         if (_mediaOnly && filtered.isNotEmpty) {
-          return _buildMediaGrid(filtered.map((e) => e.content),
-              onDelete: (id) => context.read<SavedTweetModel>().deleteSavedTweet(id));
+          return _buildMediaGrid(
+            filtered.map((e) => e.content),
+            onDelete: (id) =>
+                context.read<SavedTweetModel>().deleteSavedTweet(id),
+          );
         }
 
         return RefreshIndicator(
@@ -430,7 +498,11 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
               ? _buildEmptyState()
               : _buildList(
                   itemCount: filtered.length,
-                  tileAt: (i) => SavedTweetTile(id: filtered[i].id, content: filtered[i].content)),
+                  tileAt: (i) => SavedTweetTile(
+                    id: filtered[i].id,
+                    content: filtered[i].content,
+                  ),
+                ),
         );
       },
     );
@@ -451,14 +523,24 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
     final nameOf = {for (final group in _groups) group.id: group.name};
     final rows = <Widget>[];
     for (final section in sections) {
-      rows.add(Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-        child: Text(
-          section.isUngrouped ? L10n.of(context).likes_without_a_group : nameOf[section.groupId] ?? '',
-          style: Theme.of(context).textTheme.titleSmall!.copyWith(fontWeight: FontWeight.w700),
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+          child: Text(
+            section.isUngrouped
+                ? L10n.of(context).likes_without_a_group
+                : nameOf[section.groupId] ?? '',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall!.copyWith(fontWeight: FontWeight.w700),
+          ),
         ),
-      ));
-      rows.addAll(section.items.map((like) => SavedTweetTile(id: like.id, content: like.content)));
+      );
+      rows.addAll(
+        section.items.map(
+          (like) => SavedTweetTile(id: like.id, content: like.content),
+        ),
+      );
     }
 
     return ListView(
@@ -484,12 +566,17 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
         var filtered = _applySearch(data, (LikedTweet e) => e.content);
 
         if (_mediaOnly && filtered.isNotEmpty) {
-          return _buildMediaGrid(filtered.map((e) => e.content),
-              onDelete: (id) => context.read<LikedTweetModel>().unlikeTweet(id));
+          return _buildMediaGrid(
+            filtered.map((e) => e.content),
+            onDelete: (id) => context.read<LikedTweetModel>().unlikeTweet(id),
+          );
         }
 
         if (_likesByGroup && filtered.isNotEmpty) {
-          return RefreshIndicator(onRefresh: _refresh, child: _buildLikesByGroup(filtered));
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: _buildLikesByGroup(filtered),
+          );
         }
 
         return RefreshIndicator(
@@ -498,7 +585,11 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
               ? _buildEmptyState()
               : _buildList(
                   itemCount: filtered.length,
-                  tileAt: (i) => SavedTweetTile(id: filtered[i].id, content: filtered[i].content)),
+                  tileAt: (i) => SavedTweetTile(
+                    id: filtered[i].id,
+                    content: filtered[i].content,
+                  ),
+                ),
         );
       },
     );
@@ -517,10 +608,11 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
         return [
           if (widget.showTitle != false)
             SliverAppBar(
-              pinned: false,
-              snap: true,
-              floating: true,
-              title: Text(L10n.current.saved),
+              automaticallyImplyLeading: false,
+              pinned: useDesktopShell(context),
+              snap: !useDesktopShell(context),
+              floating: !useDesktopShell(context),
+              title: useDesktopShell(context) ? null : Text(L10n.current.saved),
               actions: [
                 IconButton(
                   isSelected: _searching,
@@ -529,7 +621,9 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
                   onPressed: () => setState(() {
                     _searching = !_searching;
                     if (_searching) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) => _searchFocusNode.requestFocus());
+                      WidgetsBinding.instance.addPostFrameCallback(
+                        (_) => _searchFocusNode.requestFocus(),
+                      );
                     } else {
                       _query = '';
                       _searchFocusNode.unfocus();
@@ -544,14 +638,15 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
                   onPressed: () => setState(() => _mediaOnly = !_mediaOnly),
                 ),
                 IconButton(
-                    icon: const Icon(Icons.folder_copy_outlined),
-                    tooltip: L10n.current.manage_folders,
-                    onPressed: () async {
-                      await Navigator.pushNamed(context, routeSavedFolders);
-                      if (mounted) {
-                        setState(() {});
-                      }
-                    }),
+                  icon: const Icon(Icons.folder_copy_outlined),
+                  tooltip: L10n.current.manage_folders,
+                  onPressed: () async {
+                    await Navigator.pushNamed(context, routeSavedFolders);
+                    if (mounted) {
+                      setState(() {});
+                    }
+                  },
+                ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline),
                   tooltip: L10n.current.find_broken_bookmarks,
@@ -561,26 +656,32 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
                     builder: (_) => const BrokenBookmarksDialog(),
                   ),
                 ),
-                IconButton(
+                if (!useDesktopShell(context))
+                  IconButton(
                     icon: const Icon(Icons.settings),
                     onPressed: () async {
                       Navigator.pushNamed(context, routeSettings);
-                    })
+                    },
+                  ),
               ],
-            )
+            ),
         ];
       },
       body: MultiProvider(
         providers: [
           ChangeNotifierProvider<TweetContextState>(
-              create: (_) => TweetContextState(prefs.get(optionTweetsHideSensitive))),
+            create: (_) =>
+                TweetContextState(prefs.get(optionTweetsHideSensitive)),
+          ),
         ],
         child: Column(
           children: [
             _buildFolderStrip(),
             if (_searching) _buildSearchField(),
             Expanded(
-              child: _filter == savedTabFavorites ? _buildFavoritesBody() : _buildSavedBody(model),
+              child: _filter == savedTabFavorites
+                  ? _buildFavoritesBody()
+                  : _buildSavedBody(model),
             ),
           ],
         ),
@@ -623,8 +724,12 @@ class SavedTweetTooLarge extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ListTile(
-              leading:
-                  Icon(Icons.error_outline, color: Colors.red.harmonizeWith(Theme.of(context).colorScheme.primary)),
+              leading: Icon(
+                Icons.error_outline,
+                color: Colors.red.harmonizeWith(
+                  Theme.of(context).colorScheme.primary,
+                ),
+              ),
               title: Text(L10n.current.oops_something_went_wrong),
               subtitle: Text(L10n.current.saved_tweet_too_large),
             ),

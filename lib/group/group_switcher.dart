@@ -5,6 +5,7 @@ import 'package:qui/database/entities.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/group/group_model.dart';
 import 'package:qui/subscriptions/group_identity.dart';
+import 'package:qui/ui/adaptive_sheet.dart';
 
 /// The feed title as a button that opens a group picker, so you can hop between
 /// groups without going back to the Groups tab.
@@ -28,7 +29,11 @@ class GroupSwitcherTitle extends StatelessWidget {
       message: L10n.of(context).switch_group,
       child: InkWell(
         borderRadius: BorderRadius.circular(9999),
-        onTap: () => showGroupSwitcher(context, currentGroupId: currentGroupId, onSwitch: onSwitch),
+        onTap: () => showGroupSwitcher(
+          context,
+          currentGroupId: currentGroupId,
+          onSwitch: onSwitch,
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
@@ -39,11 +44,17 @@ class GroupSwitcherTitle extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.appBarTheme.titleTextStyle ?? theme.textTheme.titleLarge,
+                  style:
+                      theme.appBarTheme.titleTextStyle ??
+                      theme.textTheme.titleLarge,
                 ),
               ),
               const SizedBox(width: 2),
-              Icon(Icons.expand_more, size: 20, color: theme.appBarTheme.foregroundColor),
+              Icon(
+                Icons.expand_more,
+                size: 20,
+                color: theme.appBarTheme.foregroundColor,
+              ),
             ],
           ),
         ),
@@ -61,11 +72,9 @@ Future<void> showGroupSwitcher(
 }) {
   final groupsModel = context.read<GroupsModel>();
 
-  return showModalBottomSheet(
+  return showAdaptiveSheet(
     context: context,
     isScrollControlled: true,
-    useSafeArea: true,
-    showDragHandle: true,
     builder: (sheetContext) {
       return ScopedBuilder<GroupsModel, List<SubscriptionGroup>>(
         store: groupsModel,
@@ -78,7 +87,9 @@ Future<void> showGroupSwitcher(
           }
 
           return ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(sheetContext).size.height * 0.7),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetContext).size.height * 0.7,
+            ),
             child: ListView.builder(
               shrinkWrap: true,
               padding: const EdgeInsets.only(bottom: 16),
@@ -89,9 +100,21 @@ Future<void> showGroupSwitcher(
 
                 return ListTile(
                   leading: GroupMark.forGroup(group, size: 36),
-                  title: Text(group.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(L10n.of(context).subscription_group_member_count(group.numberOfMembers)),
-                  trailing: isCurrent ? const Icon(Icons.check) : (group.pinned ? const Icon(Icons.push_pin, size: 16) : null),
+                  title: Text(
+                    group.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    L10n.of(
+                      context,
+                    ).subscription_group_member_count(group.numberOfMembers),
+                  ),
+                  trailing: isCurrent
+                      ? const Icon(Icons.check)
+                      : (group.pinned
+                            ? const Icon(Icons.push_pin, size: 16)
+                            : null),
                   selected: isCurrent,
                   onTap: () {
                     Navigator.pop(sheetContext);

@@ -10,6 +10,8 @@ import 'package:qui/subscriptions/_import.dart';
 import 'package:qui/subscriptions/_import_list.dart';
 import 'package:qui/subscriptions/_list.dart';
 import 'package:qui/subscriptions/users_model.dart';
+import 'package:qui/ui/layout.dart';
+import 'package:qui/ui/tab_app_bar.dart';
 import 'package:provider/provider.dart';
 
 /// Subscriptions home tab: Groups | People, with management actions in the app bar.
@@ -22,7 +24,8 @@ class SubscriptionsScreen extends StatefulWidget {
   State<SubscriptionsScreen> createState() => _SubscriptionsScreenState();
 }
 
-class _SubscriptionsScreenState extends State<SubscriptionsScreen> with SingleTickerProviderStateMixin {
+class _SubscriptionsScreenState extends State<SubscriptionsScreen>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabs;
   late final ScrollController _groupsScrollController;
 
@@ -50,11 +53,17 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> with SingleTi
   }
 
   void _importListAsGroup() {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => const ListImportScreen()));
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ListImportScreen()),
+    );
   }
 
   void _importSubscriptions() {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionImportScreen()));
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SubscriptionImportScreen()),
+    );
   }
 
   void _findBroken() {
@@ -70,7 +79,8 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> with SingleTi
     final l10n = L10n.of(context);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: tabAppBar(
+        context: context,
         title: Text(l10n.subscriptions),
         bottom: TabBar(
           controller: _tabs,
@@ -100,35 +110,60 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> with SingleTi
                 case _SubscriptionsMenuAction.importList:
                   _importListAsGroup();
                 case _SubscriptionsMenuAction.sortGroupsByName:
-                  context.read<GroupsModel>().changeOrderSubscriptionGroupsBy('name');
+                  context.read<GroupsModel>().changeOrderSubscriptionGroupsBy(
+                    'name',
+                  );
                 case _SubscriptionsMenuAction.sortGroupsByDate:
-                  context.read<GroupsModel>().changeOrderSubscriptionGroupsBy('created_at');
+                  context.read<GroupsModel>().changeOrderSubscriptionGroupsBy(
+                    'created_at',
+                  );
                 case _SubscriptionsMenuAction.sortGroupsByCustom:
-                  context.read<GroupsModel>().changeOrderSubscriptionGroupsBy('position');
+                  context.read<GroupsModel>().changeOrderSubscriptionGroupsBy(
+                    'position',
+                  );
                 case _SubscriptionsMenuAction.toggleGroupLayout:
                   final prefs = PrefService.of(context);
                   final asList =
-                      prefs.get<String>(optionSubscriptionGroupsLayout) == subscriptionGroupsLayoutList;
-                  prefs.set(optionSubscriptionGroupsLayout,
-                      asList ? subscriptionGroupsLayoutBoard : subscriptionGroupsLayoutList);
+                      prefs.get<String>(optionSubscriptionGroupsLayout) ==
+                      subscriptionGroupsLayoutList;
+                  prefs.set(
+                    optionSubscriptionGroupsLayout,
+                    asList
+                        ? subscriptionGroupsLayoutBoard
+                        : subscriptionGroupsLayoutList,
+                  );
                 case _SubscriptionsMenuAction.toggleGroupColumns:
                   final prefs = PrefService.of(context);
-                  final current = prefs.get<int>(optionSubscriptionGroupsColumns) ?? 2;
-                  prefs.set(optionSubscriptionGroupsColumns, current == 2 ? 3 : 2);
+                  final current =
+                      prefs.get<int>(optionSubscriptionGroupsColumns) ?? 2;
+                  prefs.set(
+                    optionSubscriptionGroupsColumns,
+                    current == 2 ? 3 : 2,
+                  );
                 case _SubscriptionsMenuAction.toggleGroupsOrder:
-                  context.read<GroupsModel>().toggleOrderSubscriptionGroupsAscending();
+                  context
+                      .read<GroupsModel>()
+                      .toggleOrderSubscriptionGroupsAscending();
                 case _SubscriptionsMenuAction.importSubscriptions:
                   _importSubscriptions();
                 case _SubscriptionsMenuAction.findBroken:
                   _findBroken();
                 case _SubscriptionsMenuAction.sortSubsByName:
-                  context.read<SubscriptionsModel>().changeOrderSubscriptionsBy('name');
+                  context.read<SubscriptionsModel>().changeOrderSubscriptionsBy(
+                    'name',
+                  );
                 case _SubscriptionsMenuAction.sortSubsByUsername:
-                  context.read<SubscriptionsModel>().changeOrderSubscriptionsBy('screen_name');
+                  context.read<SubscriptionsModel>().changeOrderSubscriptionsBy(
+                    'screen_name',
+                  );
                 case _SubscriptionsMenuAction.sortSubsByDate:
-                  context.read<SubscriptionsModel>().changeOrderSubscriptionsBy('created_at');
+                  context.read<SubscriptionsModel>().changeOrderSubscriptionsBy(
+                    'created_at',
+                  );
                 case _SubscriptionsMenuAction.toggleSubsOrder:
-                  context.read<SubscriptionsModel>().toggleOrderSubscriptionsAscending();
+                  context
+                      .read<SubscriptionsModel>()
+                      .toggleOrderSubscriptionsAscending();
                 case _SubscriptionsMenuAction.settings:
                   Navigator.pushNamed(context, routeSettings);
               }
@@ -155,14 +190,20 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> with SingleTi
                 const PopupMenuDivider(),
                 PopupMenuItem(
                   value: _SubscriptionsMenuAction.toggleGroupLayout,
-                  child: Text(PrefService.of(context).get<String>(optionSubscriptionGroupsLayout) ==
-                          subscriptionGroupsLayoutList
-                      ? l10n.subscription_groups_layout_board
-                      : l10n.subscription_groups_layout_list),
+                  child: Text(
+                    PrefService.of(
+                              context,
+                            ).get<String>(optionSubscriptionGroupsLayout) ==
+                            subscriptionGroupsLayoutList
+                        ? l10n.subscription_groups_layout_board
+                        : l10n.subscription_groups_layout_list,
+                  ),
                 ),
                 // Columns only shape the board, so offering them while a list
                 // is on screen is a control that does nothing.
-                if (PrefService.of(context).get<String>(optionSubscriptionGroupsLayout) !=
+                if (PrefService.of(
+                      context,
+                    ).get<String>(optionSubscriptionGroupsLayout) !=
                     subscriptionGroupsLayoutList)
                   PopupMenuItem(
                     value: _SubscriptionsMenuAction.toggleGroupColumns,
@@ -195,11 +236,13 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> with SingleTi
                   child: Text(l10n.toggle_sort_direction),
                 ),
               ],
-              const PopupMenuDivider(),
-              PopupMenuItem(
-                value: _SubscriptionsMenuAction.settings,
-                child: Text(l10n.settings),
-              ),
+              if (!useDesktopShell(context)) ...[
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: _SubscriptionsMenuAction.settings,
+                  child: Text(l10n.settings),
+                ),
+              ],
             ],
           ),
         ],
