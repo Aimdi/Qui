@@ -1,3 +1,4 @@
+import 'package:qui/utils/read_request_scope.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -66,17 +67,18 @@ class SubscriptionGroupFeed extends StatefulWidget {
   /// as the publications: their own source, their own pagination.
   final List<RedditSubscription> subreddits;
 
-  const SubscriptionGroupFeed(
-      {super.key,
-      required this.group,
-      required this.chunks,
-      required this.includeReplies,
-      required this.includeRetweets,
-      required this.mediaOnly,
-      this.cacheKey,
-      this.initialPreview,
-      this.publications = const [],
-      this.subreddits = const []});
+  const SubscriptionGroupFeed({
+    super.key,
+    required this.group,
+    required this.chunks,
+    required this.includeReplies,
+    required this.includeRetweets,
+    required this.mediaOnly,
+    this.cacheKey,
+    this.initialPreview,
+    this.publications = const [],
+    this.subreddits = const [],
+  });
 
   @override
   State<SubscriptionGroupFeed> createState() => _SubscriptionGroupFeedState();
@@ -154,10 +156,7 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
           if (date == null) {
             continue;
           }
-          items.add((
-            date: date,
-            build: (context) => SubstackPostCard(post: post, logoUrl: publication.logoUrl),
-          ));
+          items.add((date: date, build: (context) => SubstackPostCard(post: post, logoUrl: publication.logoUrl)));
         }
       } catch (e) {
         // One unreachable publication must not empty the whole feed of the
@@ -403,49 +402,48 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
   bool feedContainsUnrelatedTweets(TweetStatus tweets, List<Subscription> users) {
     final screenNames = users.map((e) => e.screenName).toSet();
     return tweets.chains.any(
-        (chain) => chain.tweets.any((tweet) => tweet.user != null && !screenNames.contains(tweet.user!.screenName)));
+      (chain) => chain.tweets.any((tweet) => tweet.user != null && !screenNames.contains(tweet.user!.screenName)),
+    );
   }
 
   Future<void> showUnrelatedPostsInFeedWarning() async {
     await showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text("⚠️ ${L10n.of(context).feed_issue_detected}"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(L10n.of(context).feed_contains_unrelated_tweets),
-                SizedBox(height: Theme.of(context).textTheme.bodyMedium!.fontSize! * 2),
-                PrefCheckbox(
-                  title: Text(
-                    L10n.of(context).never_show_again,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  pref: optionDisableWarningsForUnrelatedPostsInFeed,
-                )
-              ],
-            ),
-            actions: [
-              TextButton(
-                child: Text(L10n.of(context).more_info),
-                onPressed: () async {
-                  await openUri(context, "https://github.com/Teskann/QuaX/issues/26");
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                  }
-                },
-              ),
-              TextButton(
-                child: Text(L10n.of(context).close),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("⚠️ ${L10n.of(context).feed_issue_detected}"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(L10n.of(context).feed_contains_unrelated_tweets),
+              SizedBox(height: Theme.of(context).textTheme.bodyMedium!.fontSize! * 2),
+              PrefCheckbox(
+                title: Text(L10n.of(context).never_show_again, style: Theme.of(context).textTheme.bodyMedium),
+                pref: optionDisableWarningsForUnrelatedPostsInFeed,
               ),
             ],
-          );
-        });
+          ),
+          actions: [
+            TextButton(
+              child: Text(L10n.of(context).more_info),
+              onPressed: () async {
+                await openUri(context, "https://github.com/Teskann/QuaX/issues/26");
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+            TextButton(
+              child: Text(L10n.of(context).close),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   String _buildSearchQuery(List<Subscription> users) {
@@ -494,102 +492,116 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
   /// set. We store this along with the top and bottom pagination cursors, which we use to perform pagination for all
   /// sets at the same time, allowing us to create a feed made up of individual search queries.
   Future<TweetPageResult> _listTweets(String? cursorKey) async {
+    ReadWork.checkpoint();
     List<Future<List<TweetChain>>> futures = [];
 
     var repository = await Repository.writable();
+    ReadWork.checkpoint();
     var nextCursor = await createCursor(repository);
     bool shouldShowUnrelatedPostsInFeedWarning = false;
 
     for (var chunk in widget.chunks) {
       var hash = chunk.hash;
 
-      futures.add(Future(() async {
-        var tweets = <TweetChain>[];
+      futures.add(
+        Future(() async {
+          var tweets = <TweetChain>[];
 
-        String? searchCursor;
-        BigInt? storedNewestId;
+          String? searchCursor;
+          BigInt? storedNewestId;
 
-        if (cursorKey == null) {
-          // We're loading the initial content for the feed screen, so load all the chunks we already have
-          var storedChunks = await repository.query(tableFeedGroupChunk,
-              where: 'hash = ?', whereArgs: [hash], orderBy: 'created_at DESC');
+          if (cursorKey == null) {
+            // We're loading the initial content for the feed screen, so load all the chunks we already have
+            var storedChunks = await repository.query(
+              tableFeedGroupChunk,
+              where: 'hash = ?',
+              whereArgs: [hash],
+              orderBy: 'created_at DESC',
+            );
 
-          // Make sure we load any existing stored tweets from the chunk
-          tweets.addAll(chainsFromStoredChunks(storedChunks));
-          storedNewestId = _newestTweetIdOf(tweets);
+            // Make sure we load any existing stored tweets from the chunk
+            tweets.addAll(chainsFromStoredChunks(storedChunks));
+            storedNewestId = _newestTweetIdOf(tweets);
 
-          // Use the latest chunk's top cursor to load any new tweets since the last time we checked
-          var latestChunk = storedChunks.firstOrNull;
-          if (latestChunk != null) {
-            searchCursor = latestChunk['cursor_top'] as String;
+            // Use the latest chunk's top cursor to load any new tweets since the last time we checked
+            var latestChunk = storedChunks.firstOrNull;
+            if (latestChunk != null) {
+              searchCursor = latestChunk['cursor_top'] as String;
+            } else {
+              // Otherwise we need to perform a fresh load from scratch for this chunk
+              searchCursor = null;
+            }
           } else {
-            // Otherwise we need to perform a fresh load from scratch for this chunk
-            searchCursor = null;
+            // We're currently at the end of our current feed, so load the oldest chunk and use its cursor to load more
+            var storedChunks = await repository.query(
+              tableFeedGroupChunk,
+              where: 'cursor_id = ? AND hash = ?',
+              whereArgs: [int.parse(cursorKey), hash],
+            );
+            if (storedChunks.isNotEmpty) {
+              searchCursor = storedChunks.first['cursor_bottom'] as String;
+            } else {
+              searchCursor = null;
+            }
           }
-        } else {
-          // We're currently at the end of our current feed, so load the oldest chunk and use its cursor to load more
-          var storedChunks = await repository.query(tableFeedGroupChunk,
-              where: 'cursor_id = ? AND hash = ?', whereArgs: [int.parse(cursorKey), hash]);
-          if (storedChunks.isNotEmpty) {
-            searchCursor = storedChunks.first['cursor_bottom'] as String;
-          } else {
-            searchCursor = null;
-          }
-        }
 
-        // Perform our search for the next page of results for this chunk, and add those tweets to our collection
-        var query = _buildSearchQuery(chunk.users);
-        TweetStatus result =
-            await Twitter.searchTweets(query, widget.includeReplies, cursor: searchCursor);
-        shouldShowUnrelatedPostsInFeedWarning |= feedContainsUnrelatedTweets(result, chunk.users);
+          // Perform our search for the next page of results for this chunk, and add those tweets to our collection
+          var query = _buildSearchQuery(chunk.users);
+          TweetStatus result = await Twitter.searchTweets(query, widget.includeReplies, cursor: searchCursor);
+          shouldShowUnrelatedPostsInFeedWarning |= feedContainsUnrelatedTweets(result, chunk.users);
 
-        if (result.chains.isNotEmpty) {
-          tweets.addAll(result.chains);
+          if (result.chains.isNotEmpty) {
+            tweets.addAll(result.chains);
 
-          // Make sure we insert the set of cursors for this latest chunk, ready for the next time we paginate
-          await repository.insert(tableFeedGroupChunk, {
-            'cursor_id': int.parse(nextCursor),
-            'hash': hash,
-            'cursor_top': result.cursorTop,
-            'cursor_bottom': result.cursorBottom,
-            'response': jsonEncode(result.chains.map((e) => e.toJson()).toList())
-          });
-        }
-
-        // A single fetch returns only the newest page, so a long absence
-        // leaves a hole between it and the stored posts. Keep paging down
-        // until the fresh content overlaps what was stored (bounded, so a
-        // week away can't trigger dozens of requests).
-        var page = result;
-        var gapFills = 0;
-        while (storedNewestId != null &&
-            page.chains.isNotEmpty &&
-            (_oldestTweetIdOf(page.chains) ?? BigInt.zero) > storedNewestId &&
-            page.cursorBottom != null &&
-            gapFills < maxFeedGapFillPages) {
-          page = await Twitter.searchTweets(query, widget.includeReplies, cursor: page.cursorBottom);
-          gapFills++;
-
-          if (page.chains.isNotEmpty) {
-            tweets.addAll(page.chains);
+            // Make sure we insert the set of cursors for this latest chunk, ready for the next time we paginate
+            ReadWork.checkpoint();
             await repository.insert(tableFeedGroupChunk, {
               'cursor_id': int.parse(nextCursor),
               'hash': hash,
-              'cursor_top': page.cursorTop,
-              'cursor_bottom': page.cursorBottom,
-              'response': jsonEncode(page.chains.map((e) => e.toJson()).toList())
+              'cursor_top': result.cursorTop,
+              'cursor_bottom': result.cursorBottom,
+              'response': jsonEncode(result.chains.map((e) => e.toJson()).toList()),
             });
           }
-        }
 
-        return tweets;
-      }));
+          // A single fetch returns only the newest page, so a long absence
+          // leaves a hole between it and the stored posts. Keep paging down
+          // until the fresh content overlaps what was stored (bounded, so a
+          // week away can't trigger dozens of requests).
+          var page = result;
+          var gapFills = 0;
+          while (storedNewestId != null &&
+              page.chains.isNotEmpty &&
+              (_oldestTweetIdOf(page.chains) ?? BigInt.zero) > storedNewestId &&
+              page.cursorBottom != null &&
+              gapFills < maxFeedGapFillPages) {
+            ReadWork.checkpoint();
+            page = await Twitter.searchTweets(query, widget.includeReplies, cursor: page.cursorBottom);
+            gapFills++;
+
+            if (page.chains.isNotEmpty) {
+              tweets.addAll(page.chains);
+              ReadWork.checkpoint();
+              await repository.insert(tableFeedGroupChunk, {
+                'cursor_id': int.parse(nextCursor),
+                'hash': hash,
+                'cursor_top': page.cursorTop,
+                'cursor_bottom': page.cursorBottom,
+                'response': jsonEncode(page.chains.map((e) => e.toJson()).toList()),
+              });
+            }
+          }
+
+          return tweets;
+        }),
+      );
     }
 
     // Wait for all our searches to complete, then build our list of tweet conversations.
     // The stored chunks and the fresh fetch overlap at their window boundaries,
     // so drop repeated chains before display.
     var result = (await Future.wait(futures));
+    ReadWork.checkpoint();
     var threads = _sortChains(dedupeChainsById(result.expand((element) => element).toList()));
     threads = filterHiddenRetweets(threads, await hiddenRetweetScreenNames());
     threads = filterHiddenReplies(threads, await hiddenReplyScreenNames());
@@ -675,9 +687,7 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
   // Successive search windows overlap at their boundaries, so keep only media
   // entries not shown on an earlier page.
   List<MediaGridItem> _unseenMediaItems(List<TweetChain> chains) {
-    return mediaItemsFromChains(chains)
-        .where((m) => _seenMediaKeys.add('${m.tweetId}/${m.mediaIndex}'))
-        .toList();
+    return mediaItemsFromChains(chains).where((m) => _seenMediaKeys.add('${m.tweetId}/${m.mediaIndex}')).toList();
   }
 
   Widget _buildMediaGrid(BuildContext context) {
@@ -700,11 +710,7 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
     // before its posts were ever asked for — the list below knows how to show
     // interleaved items with no chains, but never got the chance.
     if (widget.chunks.isEmpty && widget.publications.isEmpty && widget.subreddits.isEmpty) {
-      return Scaffold(
-        body: Center(
-          child: Text(L10n.of(context).this_group_contains_no_subscriptions),
-        ),
-      );
+      return Scaffold(body: Center(child: Text(L10n.of(context).this_group_contains_no_subscriptions)));
     }
 
     if (widget.mediaOnly) {

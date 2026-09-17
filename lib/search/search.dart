@@ -12,6 +12,8 @@ import 'package:qui/search/search_model.dart';
 import 'package:qui/tweet/_video.dart';
 import 'package:qui/tweet/paginated_tweet_list.dart';
 import 'package:qui/ui/errors.dart';
+import 'package:qui/ui/layout.dart';
+import 'package:qui/search/search_history.dart';
 import 'package:qui/user.dart';
 import 'package:pref/pref.dart';
 import 'package:provider/provider.dart';
@@ -32,7 +34,10 @@ class ResultsScreen extends StatelessWidget {
     final arguments = ModalRoute.of(context)!.settings.arguments as SearchArguments;
 
     return _ResultsScreen(
-        initialTab: arguments.initialTab, query: arguments.query, focusInputOnOpen: arguments.focusInputOnOpen);
+      initialTab: arguments.initialTab,
+      query: arguments.query,
+      focusInputOnOpen: arguments.focusInputOnOpen,
+    );
   }
 }
 
@@ -48,41 +53,37 @@ class _ResultsScreen extends StatefulWidget {
 }
 
 class _ResultsScreenState extends State<_ResultsScreen> with SingleTickerProviderStateMixin {
-  final TextEditingController _queryController = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
-
+  final _queryController = TextEditingController();
+  final _focusNode = FocusNode();
+  final _history = SearchHistory();
   late final TabController _tabController;
   late final SearchTweetsPagination _topTweets;
   late final SearchTweetsPagination _latestTweets;
   late final SearchMediaPagination _mediaResults;
-  late final SearchUsersModel _searchUsersModel;
-
+  final _searchUsersModel = SearchUsersModel();
   Timer? _debounce;
-  String? _lastDispatchedQuery;
+  String _query = '';
+  String? _peopleQuery;
 
   @override
   void initState() {
     super.initState();
-
-    _tabController = TabController(length: 4, vsync: this, initialIndex: widget.initialTab);
-
-    final initialQuery = widget.query ?? '';
-    _topTweets = SearchTweetsPagination(product: 'Top', initialQuery: initialQuery);
-    _latestTweets = SearchTweetsPagination(product: 'Latest', initialQuery: initialQuery);
-    _mediaResults = SearchMediaPagination(initialQuery: initialQuery);
-    _searchUsersModel = SearchUsersModel();
-
-    _queryController.text = initialQuery;
-    _lastDispatchedQuery = initialQuery;
+    _query = widget.query?.trim() ?? '';
+    _queryController.text = _query;
+    _tabController = TabController(length: 4, vsync: this, initialIndex: widget.initialTab.clamp(0, 3));
+    _tabController.addListener(_searchPeopleIfVisible);
+    _topTweets = SearchTweetsPagination(product: 'Top', initialQuery: _query);
+    _latestTweets = SearchTweetsPagination(product: 'Latest', initialQuery: _query);
+    _mediaResults = SearchMediaPagination(initialQuery: _query);
     _queryController.addListener(_onQueryChanged);
-
-    // TODO: Focussing makes the selection go to the start?!
-
-    // The tweet tabs' first-page requests are fired automatically by their
-    // PagedListViews using the initial query above; the user-search Store
-    // needs an explicit kick.
-    if (initialQuery.isNotEmpty) {
-      _searchUsersModel.searchUsers(initialQuery, context);
+    _history.load();
+    _searchPeopleIfVisible();
+    if (widget.focusInputOnOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _focusNode.requestFocus();
+        _queryController.selection = TextSelection.collapsed(offset: _queryController.text.length);
+      });
     }
   }
 
@@ -95,102 +96,160 @@ class _ResultsScreenState extends State<_ResultsScreen> with SingleTickerProvide
     _topTweets.dispose();
     _latestTweets.dispose();
     _mediaResults.dispose();
+    _searchUsersModel.destroy();
+    _history.destroy();
     super.dispose();
   }
 
   void _onQueryChanged() {
-    if (_queryController.text == _lastDispatchedQuery) return;
     _debounce?.cancel();
+    if (_queryController.text.trim() == _query) return;
     _debounce = Timer(const Duration(milliseconds: 750), _dispatchQuery);
+  }
+
+  void _searchPeopleIfVisible({bool force = false}) {
+    if (_tabController.index != 3 || _query.isEmpty) return;
+    if (!force && _peopleQuery == _query) return;
+    _peopleQuery = _query;
+    _searchUsersModel.searchUsers(_query);
   }
 
   void _dispatchQuery() {
     if (!mounted) return;
-    final query = _queryController.text;
-    _lastDispatchedQuery = query;
+    _debounce?.cancel();
+    final query = _queryController.text.trim();
+    if (query == _query) return;
     _topTweets.updateQuery(query);
     _latestTweets.updateQuery(query);
     _mediaResults.updateQuery(query);
-    _searchUsersModel.searchUsers(query, context);
+    _searchUsersModel.clear();
+    _peopleQuery = null;
+    setState(() => _query = query);
+    _searchPeopleIfVisible();
   }
+
+  void _submit(String value) {
+    _queryController.text = value;
+    _dispatchQuery();
+    _history.remember(value);
+    _focusNode.unfocus();
+  }
+
+  Widget _recentSearches(BuildContext context) => ScopedBuilder<SearchHistory, List<String>>(
+    store: _history,
+    onState: (context, queries) => ListView(
+      children: [
+        ListTile(
+          title: Text(L10n.of(context).reader_recent_searches),
+          trailing: queries.isEmpty
+              ? null
+              : TextButton(onPressed: _history.clear, child: Text(L10n.of(context).reader_clear_searches)),
+        ),
+        if (queries.isEmpty)
+          Padding(padding: const EdgeInsets.all(16), child: Text(L10n.of(context).reader_search_hint)),
+        for (final query in queries)
+          ListTile(
+            leading: const Icon(Icons.history),
+            title: Text(query),
+            onTap: () => _submit(query),
+            trailing: IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: L10n.of(context).delete,
+              onPressed: () => _history.remove(query),
+            ),
+          ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
-    var prefs = PrefService.of(context, listen: false);
-
+    final prefs = PrefService.of(context, listen: false);
+    final l10n = L10n.of(context);
     return Scaffold(
-      // Needed as we're nesting Scaffolds, which causes Flutter to calculate keyboard height incorrectly
-      resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        flexibleSpace: Padding(
-          padding: EdgeInsets.fromLTRB(8, 36, 8, 8),
-          child: SearchBar(
-            controller: _queryController,
-            focusNode: _focusNode,
-            textInputAction: TextInputAction.search,
-            leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
-            trailing: [
-              IconButton(
-                icon: const Icon(Icons.tune),
-                tooltip: L10n.of(context).advanced_search,
-                onPressed: () async {
-                  final query = await Navigator.push<String>(
-                    context,
-                    MaterialPageRoute(fullscreenDialog: true, builder: (_) => const AdvancedSearchScreen()),
-                  );
-                  if (query != null && query.trim().isNotEmpty) {
-                    _queryController.text = query;
-                  }
-                },
-              ),
-              FollowButton(user: SearchSubscription(id: _queryController.text, createdAt: DateTime.now())),
-            ],
+        titleSpacing: 0,
+        toolbarHeight: 72,
+        title: ContentFrame(
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(end: 12),
+            child: SearchBar(
+              controller: _queryController,
+              focusNode: _focusNode,
+              hintText: l10n.search,
+              textInputAction: TextInputAction.search,
+              onSubmitted: _submit,
+              leading: const Icon(Icons.search),
+              trailing: [
+                if (_query.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: l10n.reader_clear_search,
+                    onPressed: () {
+                      _queryController.clear();
+                      _dispatchQuery();
+                      _focusNode.requestFocus();
+                    },
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.tune),
+                  tooltip: l10n.advanced_search,
+                  onPressed: () async {
+                    final query = await Navigator.push<String>(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AdvancedSearchScreen()),
+                    );
+                    if (mounted && query != null && query.trim().isNotEmpty) _submit(query);
+                  },
+                ),
+                if (_query.isNotEmpty)
+                  FollowButton(
+                    user: SearchSubscription(id: _query, createdAt: DateTime.now()),
+                  ),
+              ],
+            ),
           ),
         ),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.trending_up)),
-            Tab(icon: Icon(Icons.access_time_outlined)),
-            Tab(icon: Icon(Icons.image)),
-            Tab(icon: Icon(Icons.person_search)),
+          tabs: [
+            Tab(text: l10n.reader_search_top),
+            Tab(text: l10n.reader_search_latest),
+            Tab(text: l10n.media),
+            Tab(text: l10n.reader_search_people),
           ],
-          labelColor: Theme.of(context).appBarTheme.foregroundColor,
-          indicatorColor: Theme.of(context).appBarTheme.foregroundColor,
-          dividerColor: Theme.of(context).colorScheme.surfaceBright.withAlpha(150),
         ),
       ),
-      body: MultiProvider(
-        providers: [
-          ChangeNotifierProvider<TweetContextState>(
-              create: (_) => TweetContextState(prefs.get(optionTweetsHideSensitive))),
-          ChangeNotifierProvider<VideoContextState>(
-              create: (_) => VideoContextState(prefs.get(optionMediaDefaultMute))),
-        ],
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            PaginatedTweetList(
-              feed: _topTweets.feed,
-              loadPage: _topTweets.loadPage,
-              username: null,
-              firstPageErrorPrefix: L10n.of(context).unable_to_load_the_search_results,
-              newPageErrorPrefix: L10n.of(context).unable_to_load_the_next_page_of_tweets,
-              emptyMessage: L10n.of(context).no_results,
-            ),
-            PaginatedTweetList(
-              feed: _latestTweets.feed,
-              loadPage: _latestTweets.loadPage,
-              username: null,
-              firstPageErrorPrefix: L10n.of(context).unable_to_load_the_search_results,
-              newPageErrorPrefix: L10n.of(context).unable_to_load_the_next_page_of_tweets,
-              emptyMessage: L10n.of(context).no_results,
-            ),
-            SearchMediaGrid(model: _mediaResults),
-            _UserSearchResultList(store: _searchUsersModel, onRetry: _dispatchQuery),
-          ],
-        ),
+      body: ContentFrame(
+        child: _query.isEmpty
+            ? _recentSearches(context)
+            : MultiProvider(
+                providers: [
+                  ChangeNotifierProvider<TweetContextState>(
+                    create: (_) => TweetContextState(prefs.get(optionTweetsHideSensitive)),
+                  ),
+                  ChangeNotifierProvider<VideoContextState>(
+                    create: (_) => VideoContextState(prefs.get(optionMediaDefaultMute)),
+                  ),
+                ],
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    for (final pagination in [_topTweets, _latestTweets])
+                      PaginatedTweetList(
+                        key: ValueKey(pagination.product),
+                        feed: pagination.feed,
+                        loadPage: pagination.loadPage,
+                        username: null,
+                        firstPageErrorPrefix: l10n.unable_to_load_the_search_results,
+                        newPageErrorPrefix: l10n.unable_to_load_the_next_page_of_tweets,
+                        emptyMessage: l10n.no_results,
+                      ),
+                    SearchMediaGrid(model: _mediaResults),
+                    _UserSearchResultList(store: _searchUsersModel, onRetry: () => _searchPeopleIfVisible(force: true)),
+                  ],
+                ),
+              ),
       ),
     );
   }

@@ -68,7 +68,22 @@ class _MediaGridState extends State<MediaGrid> with AutomaticKeepAliveClientMixi
       onRefresh: () async => widget.controller.refresh(),
       child: PagingListener<int, MediaGridItem>(
         controller: widget.controller,
-        builder: (context, state, fetchNextPage) => PagedMasonryGridView<int, MediaGridItem>.count(
+        builder: (context, state, fetchNextPage) {
+          if (pagingAwaitingFirstPage(state)) {
+            scheduleFirstPageFetch(widget.controller, alreadyStarted: state.isLoading,
+              markStarted: () {}, isMounted: () => mounted);
+            return pagingFill(child: const Center(child: CircularProgressIndicator()));
+          }
+          if (state.items == null && state.error != null) {
+            return pagingFill(child: FullPageErrorWidget(
+              error: pagingErrorOf(state)?.error, stackTrace: pagingErrorOf(state)?.stackTrace,
+              prefix: widget.firstPageErrorPrefix, onRetry: fetchNextPage,
+            ));
+          }
+          if (state.items?.isEmpty ?? false) {
+            return pagingFill(child: Center(child: Text(widget.emptyMessage)));
+          }
+          return PagedMasonryGridView<int, MediaGridItem>.count(
           state: state,
           fetchNextPage: fetchNextPage,
           padding: EdgeInsets.all(config.spacing),
@@ -96,7 +111,8 @@ class _MediaGridState extends State<MediaGrid> with AutomaticKeepAliveClientMixi
             ),
             noItemsFoundIndicatorBuilder: (context) => Center(child: Text(widget.emptyMessage)),
           ),
-        ),
+        );
+        },
       ),
     );
   }

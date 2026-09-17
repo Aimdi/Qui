@@ -1,3 +1,5 @@
+import 'package:flutter/services.dart';
+import 'package:qui/search/loaded_feed_search.dart';
 import 'package:flutter/material.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:provider/provider.dart';
@@ -25,6 +27,11 @@ typedef TweetPageLoader = Future<TweetPageResult> Function(String? cursor);
 class TweetFeedController {
   late final CursorPagingController<String, TweetChain> _paging;
   TweetPageLoader? _loader;
+  final Duration requestTimeout;
+  int _loadGeneration = 0;
+  bool _disposed = false;
+  Future<void>? _refreshing;
+  bool _refreshFailed = false;
 
   /// When set, pagination pauses after this many pages per session instead of
   /// scrolling forever (`null` result → no cap). Feeds bind this to the
@@ -35,8 +42,8 @@ class TweetFeedController {
   // "load more anyway" can resume where the feed stopped.
   String? _cappedCursor;
 
-  TweetFeedController() {
-    _paging = CursorPagingController<String, TweetChain>(_fetch);
+  TweetFeedController({this.requestTimeout = const Duration(seconds: 45)}) {
+    _paging = CursorPagingController<String, TweetChain>(_fetch, requestTimeout: requestTimeout);
   }
 
   PagingController<int, TweetChain> get controller => _paging.pagingController;
@@ -47,6 +54,8 @@ class TweetFeedController {
 
   /// The chains loaded so far, or `null` before the first page.
   List<TweetChain>? get items => _paging.items;
+
+  String? get nextCursor => _paging.nextCursor;
 
   bool get pausedByPageCap => _cappedCursor != null;
 
@@ -73,7 +82,13 @@ class TweetFeedController {
   }
 
   Future<CursorPage<String, TweetChain>> _fetch(String? cursor) async {
-    final result = await _loader!(cursor);
+    _refreshFailed = false;
+    final generation = ++_loadGeneration;
+    final pagingGeneration = _paging.generation;
+    final result = await _paging.startRead(() => _loader!(cursor));
+    if (_disposed || generation != _loadGeneration || pagingGeneration != _paging.generation) {
+      return (items: const <TweetChain>[], nextCursor: null);
+    }
     final next = result.nextCursor;
     // Later pages can overlap earlier ones (search cursors aren't exact
     // boundaries), so drop chains that are already displayed. Last-page
@@ -97,18 +112,50 @@ class TweetFeedController {
   /// Reloads the first page and replaces the items in place, *without* resetting
   /// to the first-page spinner the way [PagingController.refresh] does. Used by
   /// pull-to-refresh so the existing tweets stay visible under the indicator.
-  Future<void> softRefresh() async {
+  Future<void> softRefresh() => _refreshing ??= _softRefresh().whenComplete(() => _refreshing = null);
+
+  Future<void> _softRefresh() async {
+    if (_disposed) return;
+    _refreshFailed = false;
+    final generation = ++_loadGeneration;
+    _paging.beginReplacement();
+    final pagingGeneration = _paging.generation;
+    bool current() => !_disposed && generation == _loadGeneration && pagingGeneration == _paging.generation;
     try {
-      final result = await _loader!(null);
+      final result = await _paging.startRead(() => _loader!(null));
+      if (!current()) return;
       final next = result.nextCursor;
-      final isLast = _isLastPage(result.chains, next, null);
-      _paging.replaceFirstPage(result.chains, isLast ? null : next);
+      final seen = <String>{};
+      final items = result.chains.where((chain) => seen.add(chain.id)).toList();
+      _pagesFetched = 1;
+      _paging.replaceFirstPage(items, _applyPageCap(_isLastPage(result.chains, next, null) ? null : next));
     } catch (e, stackTrace) {
-      _paging.setError(e, stackTrace);
+      if (current()) {
+        _refreshFailed = true;
+        _paging.setError(e, stackTrace);
+      }
     }
   }
 
-  void dispose() => _paging.dispose();
+  Future<void> retryFailedRead() async {
+    if (_refreshFailed) {
+      await softRefresh();
+    } else {
+      controller.fetchNextPage();
+    }
+  }
+
+  void reportRefreshError(Object error, StackTrace stackTrace) {
+    if (_disposed) return;
+    _paging.cancel();
+    _paging.setError(error, stackTrace);
+  }
+
+  void dispose() {
+    _disposed = true;
+    _loadGeneration++;
+    _paging.dispose();
+  }
 }
 
 /// Shared paginated tweet list used by the For-you feed, the group feed and
@@ -163,6 +210,8 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
   FeedRefreshController? _refreshController;
   bool _firstLoadStarted = false;
   bool _pendingInitialLoad = false;
+  bool _refreshPreparationFailed = false;
+  Future<void>? _refreshTask;
 
   PagingController<int, TweetChain> get _controller => widget.feed.controller;
 
@@ -190,8 +239,10 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
     }
     if (!identical(controller, _refreshController)) {
       _refreshController?.unregister(_showRefresh);
+      _refreshController?.unregisterSearch(_searchLoaded);
       _refreshController = controller;
       _refreshController?.register(_showRefresh);
+      _refreshController?.registerSearch(_searchLoaded);
     }
   }
 
@@ -211,14 +262,16 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
   void dispose() {
     _controller.removeListener(_onControllerChanged);
     _refreshController?.unregister(_showRefresh);
+    _refreshController?.unregisterSearch(_searchLoaded);
     super.dispose();
   }
 
   void _onControllerChanged() {
-    // PagingListener already rebuilds the list on controller changes; this
-    // extra rebuild only matters for swapping the cached preview out once the
-    // first page arrives, so skip it entirely when there is no preview.
-    if (mounted && widget.firstPagePreview != null) setState(() {});
+    // Loading/preview placeholders live outside PagingListener and must be
+    // replaced when the first result, failure or new query arrives.
+    final state = _controller.value;
+    if (state.items == null && state.error == null && !state.isLoading) _firstLoadStarted = false;
+    if (mounted) setState(() {});
   }
 
   // Drives the same RefreshIndicator the user pulls down, so the app-bar refresh
@@ -234,18 +287,30 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
   /// [onRefresh] side effects, then reloads the first page while keeping the
   /// current tweets visible (the RefreshIndicator shows its own small spinner on
   /// top). Awaited so the spinner stays until done.
-  Future<void> _handleRefresh() async {
-    await widget.onRefresh?.call();
-    if (!mounted) return;
-    await widget.feed.softRefresh();
+  Future<void> _handleRefresh() => _refreshTask ??= _refresh().whenComplete(() => _refreshTask = null);
+
+  Future<void> _refresh() async {
+    _refreshPreparationFailed = false;
+    try {
+      await widget.onRefresh?.call().timeout(widget.feed.requestTimeout);
+      if (!mounted) return;
+      await widget.feed.softRefresh();
+    } catch (error, stackTrace) {
+      if (mounted) {
+        _refreshPreparationFailed = true;
+        widget.feed.reportRefreshError(error, stackTrace);
+      }
+    }
   }
 
+  Future<void> _retry() => _refreshPreparationFailed ? _handleRefresh() : widget.feed.retryFailedRead();
+
   // True while we should display the cached preview: the first page hasn't
-  // loaded yet, there's no error to surface, and we actually have cached tweets.
+  // loaded yet. Keep this copy visible even if the live read fails.
   bool get _showingPreview {
     final preview = widget.firstPagePreview;
     final state = _controller.value;
-    return preview != null && preview.isNotEmpty && state.items == null && state.error == null;
+    return preview != null && preview.isNotEmpty && state.items == null;
   }
 
   // The PagedListView normally kicks off the first page when it mounts. While
@@ -282,7 +347,19 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
     await _handleRefresh();
   }
 
+  Future<void> _searchLoaded() => showLoadedFeedSearch(
+    context,
+    loadedFeedEntries(widget.feed.items ?? widget.firstPagePreview ?? const [], widget.username),
+  );
+
   Widget _wrapWithRefresh(Widget child) {
+    child = CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): _searchLoaded,
+        const SingleActivator(LogicalKeyboardKey.keyF, meta: true): _searchLoaded,
+      },
+      child: Focus(skipTraversal: true, child: child),
+    );
     if (widget.onRefresh == null) return child;
     return RefreshIndicator(key: _refreshKey, onRefresh: _onRefreshTriggered, child: child);
   }
@@ -291,7 +368,32 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
   Widget build(BuildContext context) {
     if (_showingPreview) {
       _maybeStartFirstLoad();
-      return _wrapWithRefresh(CachedTweetList(widget.firstPagePreview!, username: widget.username));
+      final preview = _wrapWithRefresh(CachedTweetList(widget.firstPagePreview!, username: widget.username));
+      if (_controller.value.error == null) return preview;
+      return Column(
+        children: [
+          Material(
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            child: ListTile(
+              dense: true,
+              title: Text(L10n.of(context).reader_refresh_failed),
+              trailing: IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: L10n.of(context).refresh,
+                onPressed: _retry,
+              ),
+            ),
+          ),
+          Expanded(child: preview),
+        ],
+      );
+    }
+
+    if (pagingAwaitingFirstPage(_controller.value)) {
+      _maybeStartFirstLoad();
+      return _wrapWithRefresh(
+        ListView(physics: const AlwaysScrollableScrollPhysics(), children: const [TweetFeedSkeleton()]),
+      );
     }
 
     final list = PagingListener<int, TweetChain>(
@@ -303,6 +405,25 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
         final loaded = state.items ?? const <TweetChain>[];
         final boundary = seen == null ? null : _caughtUpBoundaryOf(loaded, seen);
         final buckets = placeInterleaved(loaded, widget.interleaved);
+        if (state.items == null && state.error != null) {
+          return pagingFill(
+            child: FullPageErrorWidget(
+              error: pagingErrorOf(state)?.error,
+              stackTrace: pagingErrorOf(state)?.stackTrace,
+              prefix: widget.firstPageErrorPrefix,
+              onRetry: _retry,
+            ),
+          );
+        }
+        if (loaded.isEmpty) {
+          if (widget.interleaved.isNotEmpty) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [for (final item in widget.interleaved) item.build(context)],
+            );
+          }
+          return pagingFill(child: Center(child: Text(widget.emptyMessage)));
+        }
         return PagedListView<int, TweetChain>(
           padding: EdgeInsets.only(top: 4, bottom: MediaQuery.of(context).padding.bottom),
           state: state,
@@ -338,13 +459,13 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
               error: pagingErrorOf(state)?.error,
               stackTrace: pagingErrorOf(state)?.stackTrace,
               prefix: widget.firstPageErrorPrefix,
-              onRetry: fetchNextPage,
+              onRetry: _retry,
             ),
             newPageErrorIndicatorBuilder: (context) => FullPageErrorWidget(
               error: pagingErrorOf(state)?.error,
               stackTrace: pagingErrorOf(state)?.stackTrace,
               prefix: widget.newPageErrorPrefix,
-              onRetry: fetchNextPage,
+              onRetry: _retry,
             ),
             // A group can hold nothing but subreddits or publications. Its
             // posts are all interleaved items, and X having no chains for it is

@@ -81,8 +81,13 @@ class DeckBodyState extends State<DeckBody> {
   @override
   void didUpdateWidget(covariant DeckBody oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final layoutChanged = oldWidget.rows != widget.rows ||
-        oldWidget.children.length != widget.children.length;
+    if (oldWidget.scrollController != widget.scrollController) {
+      final retired = _ownedController ? _scrollController : null;
+      _scrollController = widget.scrollController ?? ScrollController();
+      _ownedController = widget.scrollController == null;
+      if (retired != null) WidgetsBinding.instance.addPostFrameCallback((_) => retired.dispose());
+    }
+    final layoutChanged = oldWidget.rows != widget.rows || oldWidget.children.length != widget.children.length;
     if (layoutChanged) {
       _ensureRowControllers();
       // Controllers/strips only attach next frame; scroll once they exist.
@@ -114,8 +119,7 @@ class DeckBodyState extends State<DeckBody> {
     if (!controller.hasClients) return;
     final target = raw.clamp(0.0, controller.position.maxScrollExtent);
     if (animate) {
-      controller.animateTo(target,
-          duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
+      controller.animateTo(target, duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
     } else {
       controller.jumpTo(target);
     }
@@ -145,22 +149,21 @@ class DeckBodyState extends State<DeckBody> {
     final scheme = Theme.of(context).colorScheme;
     final page = widget.pages[index];
     final focused = index == widget.focusedIndex;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.45),
-            width: 1,
-          ),
+    return _RetainedDeckColumn(
+      key: ValueKey(page.id),
+      onFocus: () => widget.onFocusChanged(index),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(right: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.45), width: 1)),
         ),
-      ),
-      child: SizedBox(
-        width: quiDeckColumnWidth,
-        child: DeckColumn(
-          title: page.titleBuilder(context),
-          icon: focused ? page.selectedIcon : page.icon,
-          focused: focused,
-          child: widget.children[index],
+        child: SizedBox(
+          width: quiDeckColumnWidth,
+          child: DeckColumn(
+            title: page.titleBuilder(context),
+            icon: focused ? page.selectedIcon : page.icon,
+            focused: focused,
+            child: widget.children[index],
+          ),
         ),
       ),
     );
@@ -176,7 +179,7 @@ class DeckBodyState extends State<DeckBody> {
   Widget _buildSingleRow(BuildContext context) {
     return NotificationListener<ScrollNotification>(
       onNotification: (n) {
-        if (n is ScrollUpdateNotification && n.metrics.axis == Axis.horizontal) {
+        if (n is ScrollEndNotification && n.metrics.axis == Axis.horizontal) {
           _onScroll();
         }
         return false;
@@ -185,6 +188,10 @@ class DeckBodyState extends State<DeckBody> {
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
         // Keep all columns alive so feeds keep their scroll position / cache.
+        findChildIndexCallback: (key) {
+          final index = widget.pages.indexWhere((page) => ValueKey(page.id) == key);
+          return index < 0 ? null : index;
+        },
         itemCount: widget.children.length,
         itemExtent: _extent,
         itemBuilder: (context, index) => _buildColumn(context, index),
@@ -203,18 +210,19 @@ class DeckBodyState extends State<DeckBody> {
       if (start >= n) break;
       final end = min(start + perRow, n);
       if (strips.isNotEmpty) {
-        strips.add(Divider(
-            height: 1, thickness: 1, color: scheme.outlineVariant.withValues(alpha: 0.45)));
+        strips.add(Divider(height: 1, thickness: 1, color: scheme.outlineVariant.withValues(alpha: 0.45)));
       }
-      strips.add(Expanded(
-        child: ListView.builder(
-          controller: _rowControllers[r],
-          scrollDirection: Axis.horizontal,
-          itemCount: end - start,
-          itemExtent: _extent,
-          itemBuilder: (context, i) => _buildColumn(context, start + i),
+      strips.add(
+        Expanded(
+          child: ListView.builder(
+            controller: _rowControllers[r],
+            scrollDirection: Axis.horizontal,
+            itemCount: end - start,
+            itemExtent: _extent,
+            itemBuilder: (context, i) => _buildColumn(context, start + i),
+          ),
         ),
-      ));
+      );
     }
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: strips);
@@ -228,13 +236,7 @@ class DeckColumn extends StatelessWidget {
   final bool focused;
   final Widget child;
 
-  const DeckColumn({
-    super.key,
-    required this.title,
-    required this.icon,
-    required this.focused,
-    required this.child,
-  });
+  const DeckColumn({super.key, required this.title, required this.icon, required this.focused, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -257,10 +259,7 @@ class DeckColumn extends StatelessWidget {
                 child: Row(
                   children: [
                     IconTheme(
-                      data: IconThemeData(
-                        size: 18,
-                        color: focused ? scheme.primary : scheme.onSurfaceVariant,
-                      ),
+                      data: IconThemeData(size: 18, color: focused ? scheme.primary : scheme.onSurfaceVariant),
                       child: icon,
                     ),
                     const SizedBox(width: 8),
@@ -285,13 +284,48 @@ class DeckColumn extends StatelessWidget {
         Expanded(
           // Isolate each column so nested Scaffolds / NestedScrollViews
           // don't fight for the primary scroll position.
-          child: MediaQuery.removePadding(
-            context: context,
-            removeTop: true,
-            child: child,
-          ),
+          child: MediaQuery.removePadding(context: context, removeTop: true, child: child),
         ),
       ],
+    );
+  }
+}
+
+/// Sliver keep-alive preserves each visited column while it is off screen.
+class _RetainedDeckColumn extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onFocus;
+  const _RetainedDeckColumn({super.key, required this.child, required this.onFocus});
+  @override
+  State<_RetainedDeckColumn> createState() => _RetainedDeckColumnState();
+}
+
+class _RetainedDeckColumnState extends State<_RetainedDeckColumn>
+    with AutomaticKeepAliveClientMixin<_RetainedDeckColumn> {
+  final _focus = FocusNode();
+  @override
+  bool get wantKeepAlive => true;
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return Focus(
+      focusNode: _focus,
+      onFocusChange: (focused) {
+        if (focused) widget.onFocus();
+      },
+      child: Listener(
+        onPointerDown: (_) {
+          widget.onFocus();
+          if (!_focus.hasFocus) _focus.requestFocus();
+        },
+        child: widget.child,
+      ),
     );
   }
 }

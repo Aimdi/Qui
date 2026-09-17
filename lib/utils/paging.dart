@@ -1,4 +1,6 @@
+import 'package:flutter/widgets.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
+import 'package:qui/utils/read_request_scope.dart';
 
 /// Carries an error together with its stack trace through
 /// infinite_scroll_pagination v5.
@@ -21,6 +23,39 @@ PagingError? pagingErrorOf(PagingState state) {
   return error is PagingError ? error : null;
 }
 
+/// True while the first page has not arrived and has not failed.
+bool pagingAwaitingFirstPage(PagingState state) => state.items == null && state.error == null;
+
+/// PagedListView fetches page 0 when it mounts. Kick that ourselves when the
+/// list is not mounted yet — a skeleton, or a TabBarView first-page slot.
+void scheduleFirstPageFetch<PageKeyType, ItemType>(
+  PagingController<PageKeyType, ItemType> controller, {
+  required bool alreadyStarted,
+  required VoidCallback markStarted,
+  required bool Function() isMounted,
+}) {
+  if (alreadyStarted) return;
+  if (!pagingAwaitingFirstPage(controller.value)) return;
+  markStarted();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (isMounted()) controller.fetchNextPage();
+  });
+}
+
+/// Scrollable stand-in used instead of PagedListView's first-page slot.
+///
+/// That slot is a [SliverFillRemaining] and freezes inside NestedScrollView /
+/// TabBarView. A real ListView is pull-to-refreshable and is the single inner
+/// scrollable NestedScrollView expects.
+Widget pagingFill({required Widget child}) {
+  return LayoutBuilder(
+    builder: (context, constraints) => ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [SizedBox(height: constraints.hasBoundedHeight ? constraints.maxHeight : 200, child: child)],
+    ),
+  );
+}
+
 /// One fetched page: the items to append and the cursor for the *next* page.
 /// A `null` [nextCursor] ends pagination.
 typedef CursorPage<C, T> = ({List<T> items, C? nextCursor});
@@ -38,13 +73,15 @@ typedef CursorPageFetcher<C, T> = Future<CursorPage<C, T>> Function(C? cursor);
 /// items plus the next cursor (`null` ends pagination); errors are wrapped in
 /// [PagingError] so the stack trace survives to the error widgets.
 class CursorPagingController<C, T> {
-  late final PagingController<int, T> pagingController;
+  late final _CursorPageController<T> _controller;
+  PagingController<int, T> get pagingController => _controller;
   final CursorPageFetcher<C, T> _fetch;
+  final Duration requestTimeout;
   C? _nextCursor;
   bool _reachedEnd = false;
 
-  CursorPagingController(this._fetch) {
-    pagingController = PagingController<int, T>(
+  CursorPagingController(this._fetch, {this.requestTimeout = const Duration(seconds: 45)}) {
+    _controller = _CursorPageController<T>(
       getNextPageKey: (state) {
         final keys = state.keys;
         if (keys == null || keys.isEmpty) return 0;
@@ -57,15 +94,31 @@ class CursorPagingController<C, T> {
   /// The flattened items fetched so far, or `null` before the first page loads.
   List<T>? get items => pagingController.value.items;
 
+  /// Cursor the next page will be fetched with, or `null` before the first
+  /// page has set one / once pagination has ended.
+  C? get nextCursor => _nextCursor;
+
+  int get generation => _controller.generation;
+
+  void cancel() => pagingController.cancel();
+
+  /// Keep pagination from starting against the old cursor during a refresh.
+  void beginReplacement() => _controller.beginReplacement();
+
+  Future<V> waitForRead<V>(Future<V> source) => _controller.reads.run(source, timeout: requestTimeout);
+
+  Future<V> startRead<V>(Future<V> Function() source) => _controller.reads.start(source, timeout: requestTimeout);
+
   Future<List<T>> _fetchPage(int pageKey) async {
+    final generation = this.generation;
     if (pageKey == 0) {
       _reachedEnd = false;
       _nextCursor = null;
     }
     try {
       final cursor = pageKey == 0 ? null : _nextCursor;
-      final page = await _fetch(cursor);
-      _setNextCursor(page.nextCursor);
+      final page = await startRead(() => _fetch(cursor));
+      if (generation == this.generation) _setNextCursor(page.nextCursor);
       return page.items;
     } catch (e, stackTrace) {
       throw PagingError(e, stackTrace);
@@ -81,6 +134,7 @@ class CursorPagingController<C, T> {
   /// resetting to the first-page spinner the way [PagingController.refresh]
   /// does — used by pull-to-refresh so existing items stay visible.
   void replaceFirstPage(List<T> items, C? nextCursor) {
+    cancel();
     _setNextCursor(nextCursor);
     pagingController.value = PagingState<int, T>(
       pages: [items],
@@ -90,9 +144,30 @@ class CursorPagingController<C, T> {
     );
   }
 
+  /// Append late batches after the visible items so older pages never shift.
+  /// A deliberate refresh restores global chronological order.
+  void appendMissing(List<T> items, C? firstPageCursor) {
+    cancel();
+    final state = pagingController.value;
+    final pages = state.pages;
+    if (pages == null || pages.length <= 1) {
+      replaceFirstPage([...?pages?.firstOrNull, ...items], firstPageCursor);
+      return;
+    }
+    pagingController.value = state.copyWith(
+      pages: [
+        ...pages.take(pages.length - 1),
+        [...pages.last, ...items],
+      ],
+      error: null,
+      isLoading: false,
+    );
+  }
+
   /// Surfaces an error while keeping any already-loaded items visible.
   void setError(Object error, StackTrace stackTrace) {
-    pagingController.value = pagingController.value.copyWith(error: PagingError(error, stackTrace));
+    _controller.finishReplacement();
+    pagingController.value = pagingController.value.copyWith(error: PagingError(error, stackTrace), isLoading: false);
   }
 
   /// Re-opens pagination after it ended, seeding [cursor] for the next page,
@@ -104,5 +179,65 @@ class CursorPagingController<C, T> {
     pagingController.fetchNextPage();
   }
 
+  /// Re-opens pagination by appending [items] the controller held back rather
+  /// than fetched, seeding [cursor] for whatever follows them (`null` ends
+  /// pagination there). Used when a stop was imposed part-way through a page.
+  void resumeWith(List<T> items, C? cursor) {
+    _setNextCursor(cursor);
+    final state = pagingController.value;
+    final keys = state.keys ?? const <int>[];
+    pagingController.value = PagingState<int, T>(
+      pages: [...?state.pages, items],
+      keys: [...keys, keys.isEmpty ? 0 : keys.last + 1],
+      hasNextPage: cursor != null,
+      error: null,
+    );
+  }
+
   void dispose() => pagingController.dispose();
+}
+
+/// Invalidate cursors as well as items when the package cancels a request.
+class _CursorPageController<T> extends PagingController<int, T> {
+  int generation = 0;
+  final reads = ReadRequestScope();
+  bool _replacing = false;
+
+  _CursorPageController({required super.getNextPageKey, required super.fetchPage});
+
+  void beginReplacement() {
+    cancel();
+    _replacing = true;
+    operation = Object();
+    value = value.copyWith(isLoading: true, error: null);
+  }
+
+  void finishReplacement() {
+    if (!_replacing) return;
+    _replacing = false;
+    operation = null;
+  }
+
+  @override
+  void refresh() {
+    _replacing = false;
+    generation++;
+    reads.cancel();
+    super.refresh();
+  }
+
+  @override
+  void cancel() {
+    _replacing = false;
+    generation++;
+    reads.cancel();
+    super.cancel();
+  }
+
+  @override
+  void dispose() {
+    generation++;
+    reads.cancel();
+    super.dispose();
+  }
 }
