@@ -208,6 +208,7 @@ class PaginatedTweetList extends StatefulWidget {
 class _PaginatedTweetListState extends State<PaginatedTweetList> {
   final GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
   FeedRefreshController? _refreshController;
+  final _feedFocus = FocusNode();
   bool _firstLoadStarted = false;
   bool _pendingInitialLoad = false;
   bool _refreshPreparationFailed = false;
@@ -261,6 +262,7 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
   @override
   void dispose() {
     _controller.removeListener(_onControllerChanged);
+    _feedFocus.dispose();
     _refreshController?.unregister(_showRefresh);
     _refreshController?.unregisterSearch(_searchLoaded);
     super.dispose();
@@ -358,7 +360,16 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): _searchLoaded,
         const SingleActivator(LogicalKeyboardKey.keyF, meta: true): _searchLoaded,
       },
-      child: Focus(skipTraversal: true, child: child),
+      child: Focus(
+        focusNode: _feedFocus,
+        skipTraversal: true,
+        child: Listener(
+          onPointerDown: (_) {
+            if (!_feedFocus.hasFocus) _feedFocus.requestFocus();
+          },
+          child: child,
+        ),
+      ),
     );
     if (widget.onRefresh == null) return child;
     return RefreshIndicator(key: _refreshKey, onRefresh: _onRefreshTriggered, child: child);

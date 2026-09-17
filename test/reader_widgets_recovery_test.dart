@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qui/generated/l10n.dart';
+import 'package:qui/client/client.dart';
 import 'package:qui/plugins/plugin.dart';
 import 'package:qui/plugins/plugin_reader.dart';
 import 'package:qui/tweet/paginated_tweet_list.dart';
@@ -48,7 +49,7 @@ void main() {
           username: null,
           loadPage: (_) async {
             calls++;
-            return (chains: [], nextCursor: null);
+            return (chains: <TweetChain>[], nextCursor: null);
           },
           firstPageErrorPrefix: 'Could not load',
           newPageErrorPrefix: 'Could not load more',

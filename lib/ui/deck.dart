@@ -104,7 +104,7 @@ class DeckBodyState extends State<DeckBody> {
     if (widget.children.isEmpty) return;
 
     if (_rows <= 1) {
-      _scrollController_scrollTo(_scrollController, index * _extent, animate);
+      _scrollControllerTo(_scrollController, index * _extent, animate);
       return;
     }
 
@@ -112,10 +112,10 @@ class DeckBodyState extends State<DeckBody> {
     if (perRow <= 0) return;
     final row = (index ~/ perRow).clamp(0, _rowControllers.length - 1);
     final local = index % perRow;
-    _scrollController_scrollTo(_rowControllers[row], local * _extent, animate);
+    _scrollControllerTo(_rowControllers[row], local * _extent, animate);
   }
 
-  void _scrollController_scrollTo(ScrollController controller, double raw, bool animate) {
+  void _scrollControllerTo(ScrollController controller, double raw, bool animate) {
     if (!controller.hasClients) return;
     final target = raw.clamp(0.0, controller.position.maxScrollExtent);
     if (animate) {

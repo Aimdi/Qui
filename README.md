@@ -111,7 +111,9 @@ fvm flutter build linux --release --no-tree-shake-icons
 ```
 
 The verification script runs static analysis, the test suite and a non-mutating
-format check. The [desktop reader upgrade notes](docs/xta-reader-upgrade.md)
+120-column format check of changed/new Dart files, matching the existing CI
+style policy. Analyzer errors and warnings remain fatal; pre-existing informational
+lints are reported. The [desktop reader upgrade notes](docs/xta-reader-upgrade.md)
 record the XTA reference and the intentionally separate desktop implementation.
 
 ## Desktop login
