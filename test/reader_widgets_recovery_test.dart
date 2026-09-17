@@ -91,6 +91,39 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('refresh failure on a completed empty feed stays visible and retries page one', (tester) async {
+    final feed = TweetFeedController();
+    addTearDown(feed.dispose);
+    final cursors = <String?>[];
+    await tester.pumpWidget(
+      _app(
+        PaginatedTweetList(
+          feed: feed,
+          username: null,
+          loadPage: (cursor) async {
+            cursors.add(cursor);
+            if (cursors.length == 2) throw Exception('offline');
+            return (chains: <TweetChain>[], nextCursor: null);
+          },
+          firstPageErrorPrefix: 'Could not load',
+          newPageErrorPrefix: 'Could not load more',
+          emptyMessage: 'No matches',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await feed.softRefresh();
+    await tester.pumpAndSettle();
+    expect(find.text(L10n.current.reader_refresh_failed), findsOneWidget);
+    expect(find.text('No matches'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.refresh));
+    await tester.pumpAndSettle();
+    expect(cursors, [null, null, null]);
+    expect(find.text(L10n.current.reader_refresh_failed), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('standalone plugin reader opens settings and returns through Back', (tester) async {
     await tester.pumpWidget(
       _app(

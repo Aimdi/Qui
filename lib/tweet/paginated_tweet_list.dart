@@ -59,6 +59,8 @@ class TweetFeedController {
 
   bool get pausedByPageCap => _cappedCursor != null;
 
+  bool get hasRefreshError => _refreshFailed;
+
   /// Resumes pagination past the page cap, granting another cap's worth of
   /// pages before pausing again.
   void continuePastCap() {
@@ -147,6 +149,7 @@ class TweetFeedController {
 
   void reportRefreshError(Object error, StackTrace stackTrace) {
     if (_disposed) return;
+    _refreshFailed = true;
     _paging.cancel();
     _paging.setError(error, stackTrace);
   }
@@ -381,23 +384,7 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
       _maybeStartFirstLoad();
       final preview = _wrapWithRefresh(CachedTweetList(widget.firstPagePreview!, username: widget.username));
       if (_controller.value.error == null) return preview;
-      return Column(
-        children: [
-          Material(
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            child: ListTile(
-              dense: true,
-              title: Text(L10n.of(context).reader_refresh_failed),
-              trailing: IconButton(
-                icon: const Icon(Icons.refresh),
-                tooltip: L10n.of(context).refresh,
-                onPressed: _retry,
-              ),
-            ),
-          ),
-          Expanded(child: preview),
-        ],
-      );
+      return _withRefreshError(preview);
     }
 
     if (pagingAwaitingFirstPage(_controller.value)) {
@@ -499,8 +486,23 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
       },
     );
 
-    return _wrapWithRefresh(list);
+    final content = _wrapWithRefresh(list);
+    return widget.feed.hasRefreshError && widget.feed.hasItems ? _withRefreshError(content) : content;
   }
+
+  Widget _withRefreshError(Widget child) => Column(
+    children: [
+      Material(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        child: ListTile(
+          dense: true,
+          title: Text(L10n.of(context).reader_refresh_failed),
+          trailing: IconButton(icon: const Icon(Icons.refresh), tooltip: L10n.of(context).refresh, onPressed: _retry),
+        ),
+      ),
+      Expanded(child: child),
+    ],
+  );
 
   // Index of the first already-seen chain, when at least one new chain sits
   // above it. Index 0 means nothing is new; no boundary yet means the seen

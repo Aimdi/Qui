@@ -19,7 +19,10 @@ String loadedTweetText(TweetWithCard tweet, [int depth = 0]) => [
   tweet.noteText ?? '',
   tweet.user?.name ?? '',
   tweet.user?.screenName ?? '',
-  for (final url in [...?tweet.entities?.urls, ...?tweet.noteEntities?.urls]) ...[url.expandedUrl ?? '', url.displayUrl ?? ''],
+  for (final url in [...?tweet.entities?.urls, ...?tweet.noteEntities?.urls]) ...[
+    url.expandedUrl ?? '',
+    url.displayUrl ?? '',
+  ],
   if (depth < 3 && tweet.retweetedStatusWithCard != null) loadedTweetText(tweet.retweetedStatusWithCard!, depth + 1),
   if (depth < 3 && tweet.quotedStatusWithCard != null) loadedTweetText(tweet.quotedStatusWithCard!, depth + 1),
 ].join('\n');
