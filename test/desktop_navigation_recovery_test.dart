@@ -73,15 +73,17 @@ void main() {
     final prefs = PrefServiceCache(cache: {});
     await tester.pumpWidget(
       _app(
-        Scaffold(
-          body: DeckBody(
-            pages: [_page('first'), _page('second')],
-            focusedIndex: 0,
-            onFocusChanged: (index) => focused = index,
-            children: const [
-              Center(child: Text('first body')),
-              Center(child: Text('second body')),
-            ],
+        StatefulBuilder(
+          builder: (context, setState) => Scaffold(
+            body: DeckBody(
+              pages: [_page('first'), _page('second')],
+              focusedIndex: focused,
+              onFocusChanged: (index) => setState(() => focused = index),
+              children: const [
+                Center(child: Text('first body')),
+                Center(child: Text('second body')),
+              ],
+            ),
           ),
         ),
         prefs,
@@ -89,6 +91,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('second body'));
+    await tester.pumpAndSettle();
     expect(focused, 1);
     await tester.pumpWidget(const SizedBox());
   });

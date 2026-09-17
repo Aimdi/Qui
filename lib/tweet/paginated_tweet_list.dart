@@ -403,7 +403,10 @@ class _PaginatedTweetListState extends State<PaginatedTweetList> {
     if (pagingAwaitingFirstPage(_controller.value)) {
       _maybeStartFirstLoad();
       return _wrapWithRefresh(
-        ListView(physics: const AlwaysScrollableScrollPhysics(), children: const [TweetFeedSkeleton()]),
+        ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [TweetSkeletonTile(), TweetSkeletonTile(), TweetSkeletonTile()],
+        ),
       );
     }
 

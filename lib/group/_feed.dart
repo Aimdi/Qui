@@ -1,3 +1,5 @@
+import 'package:qui/group/feed_refresh_controller.dart';
+import 'package:qui/search/loaded_feed_search.dart';
 import 'package:qui/utils/read_request_scope.dart';
 import 'dart:convert';
 
@@ -92,6 +94,7 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
   CursorPagingController<String, MediaGridItem>? _mediaPaging;
   final Set<String> _seenMediaKeys = <String>{};
   FeedSessionCache? _cache;
+  FeedRefreshController? _mediaSearchBridge;
   ScrollController? _innerScrollController;
   bool _scrollRestoreScheduled = false;
   // Cached tweets shown while the first page loads, so opening the feed reveals
@@ -363,6 +366,7 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
 
   @override
   void dispose() {
+    _mediaSearchBridge?.unregisterSearch(_searchLoadedMedia);
     _mediaPaging?.dispose();
     if (!_usesCache) {
       _feedController.dispose();
@@ -690,7 +694,25 @@ class _SubscriptionGroupFeedState extends State<SubscriptionGroupFeed> {
     return mediaItemsFromChains(chains).where((m) => _seenMediaKeys.add('${m.tweetId}/${m.mediaIndex}')).toList();
   }
 
+  Future<void> _searchLoadedMedia() {
+    final seen = <String>{};
+    final chains = <TweetChain>[];
+    for (final item in _mediaPaging?.items ?? const <MediaGridItem>[]) {
+      final tweet = item.tweet;
+      if (tweet != null && seen.add(item.tweetId)) {
+        chains.add(TweetChain(id: item.tweetId, tweets: [tweet], isPinned: false));
+      }
+    }
+    return showLoadedFeedSearch(context, loadedFeedEntries(chains, null));
+  }
+
   Widget _buildMediaGrid(BuildContext context) {
+    try {
+      _mediaSearchBridge = context.read<FeedRefreshController>();
+      _mediaSearchBridge?.registerSearch(_searchLoadedMedia);
+    } on ProviderNotFoundException {
+      _mediaSearchBridge = null;
+    }
     return Scaffold(
       body: TweetContextScope(
         child: MediaGrid(

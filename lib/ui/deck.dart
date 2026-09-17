@@ -38,6 +38,7 @@ class DeckBodyState extends State<DeckBody> {
   // Single-row scroll controller (rows == 1), possibly provided by the shell.
   late ScrollController _scrollController;
   bool _ownedController = false;
+  int _scrollCommands = 0;
   // One controller per row when rows > 1.
   final List<ScrollController> _rowControllers = [];
 
@@ -118,15 +119,23 @@ class DeckBodyState extends State<DeckBody> {
   void _scrollControllerTo(ScrollController controller, double raw, bool animate) {
     if (!controller.hasClients) return;
     final target = raw.clamp(0.0, controller.position.maxScrollExtent);
+    if ((controller.position.pixels - target).abs() < 0.5) return;
+    _scrollCommands++;
     if (animate) {
-      controller.animateTo(target, duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
+      controller
+          .animateTo(target, duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic)
+          .whenComplete(() => _scrollCommands--);
     } else {
-      controller.jumpTo(target);
+      try {
+        controller.jumpTo(target);
+      } finally {
+        _scrollCommands--;
+      }
     }
   }
 
   void _onScroll() {
-    if (!_scrollController.hasClients || widget.children.isEmpty) return;
+    if (_scrollCommands > 0 || !_scrollController.hasClients || widget.children.isEmpty) return;
     final offset = _scrollController.offset;
     final index = (offset / _extent).round().clamp(0, widget.children.length - 1);
     if (index != widget.focusedIndex) {

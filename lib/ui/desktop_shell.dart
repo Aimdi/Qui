@@ -149,6 +149,7 @@ class _QuiShellState extends State<QuiShell> {
       }
       return;
     }
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _currentPage = index);
     unfocusOtherPages();
     if (_deckMode && useDesktopShell(context)) {

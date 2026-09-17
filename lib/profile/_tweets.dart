@@ -154,7 +154,10 @@ class _ProfileTweetsState extends State<ProfileTweets> with AutomaticKeepAliveCl
                   markStarted: () => _firstLoadStarted = true,
                   isMounted: () => mounted,
                 );
-                return ListView(physics: const AlwaysScrollableScrollPhysics(), children: const [TweetFeedSkeleton()]);
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [TweetSkeletonTile(), TweetSkeletonTile(), TweetSkeletonTile()],
+                );
               }
               if (state.items == null && state.error != null) {
                 return pagingFill(
