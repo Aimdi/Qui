@@ -1,3 +1,4 @@
+import 'package:qui/utils/read_request_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_triple/flutter_triple.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
@@ -64,15 +65,55 @@ class SearchMediaPagination {
 }
 
 class SearchUsersModel extends Store<List<UserWithExtra>> {
-  SearchUsersModel() : super([]);
+  final Future<List<UserWithExtra>> Function(String) search;
+  final Duration requestTimeout;
+  final _reads = ReadRequestScope();
+  int _generation = 0;
+  bool _closed = false;
 
-  Future<void> searchUsers(String query, BuildContext context) async {
-    await execute(() async {
-      if (query.isEmpty) {
-        return [];
-      } else {
-        return await Twitter.searchUsers(query);
-      }
-    });
+  SearchUsersModel({
+    Future<List<UserWithExtra>> Function(String)? search,
+    this.requestTimeout = const Duration(seconds: 30),
+  }) : search = search ?? Twitter.searchUsers,
+       super([]);
+
+  @override
+  dynamic get error => triple.error;
+
+  void clear() {
+    _generation++;
+    _reads.cancel();
+    if (!_closed) {
+      update([], force: true);
+      setLoading(false);
+    }
+  }
+
+  Future<void> searchUsers(String query, [BuildContext? context]) async {
+    if (_closed) return;
+    if (query.trim().isEmpty) {
+      clear();
+      return;
+    }
+    final generation = ++_generation;
+    _reads.cancel();
+    bool current() => !_closed && generation == _generation;
+    setLoading(true);
+    try {
+      final users = await _reads.start(() => search(query.trim()), timeout: requestTimeout);
+      if (current()) update(users, force: true);
+    } catch (error) {
+      if (current()) setError(error, force: true);
+    } finally {
+      if (current()) setLoading(false);
+    }
+  }
+
+  @override
+  Future<void> destroy() {
+    _closed = true;
+    _generation++;
+    _reads.cancel();
+    return super.destroy();
   }
 }

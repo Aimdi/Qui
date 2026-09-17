@@ -1,6 +1,5 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:pref/pref.dart';
 import 'package:qui/constants.dart';
@@ -68,35 +67,60 @@ class _MediaGridState extends State<MediaGrid> with AutomaticKeepAliveClientMixi
       onRefresh: () async => widget.controller.refresh(),
       child: PagingListener<int, MediaGridItem>(
         controller: widget.controller,
-        builder: (context, state, fetchNextPage) => PagedMasonryGridView<int, MediaGridItem>.count(
-          state: state,
-          fetchNextPage: fetchNextPage,
-          padding: EdgeInsets.all(config.spacing),
-          crossAxisCount: config.columns,
-          mainAxisSpacing: config.spacing,
-          crossAxisSpacing: config.spacing,
-          addAutomaticKeepAlives: false,
-          builderDelegate: PagedChildBuilderDelegate<MediaGridItem>(
-            itemBuilder: (context, item, index) => _MediaGridTile(
+        builder: (context, state, fetchNextPage) {
+          if (pagingAwaitingFirstPage(state)) {
+            scheduleFirstPageFetch(
+              widget.controller,
+              alreadyStarted: state.isLoading,
+              markStarted: () {},
+              isMounted: () => mounted,
+            );
+            return pagingFill(child: const Center(child: CircularProgressIndicator()));
+          }
+          if (state.items == null && state.error != null) {
+            return pagingFill(
+              child: FullPageErrorWidget(
+                error: pagingErrorOf(state)?.error,
+                stackTrace: pagingErrorOf(state)?.stackTrace,
+                prefix: widget.firstPageErrorPrefix,
+                onRetry: fetchNextPage,
+              ),
+            );
+          }
+          if (state.items?.isEmpty ?? false) {
+            return pagingFill(child: Center(child: Text(widget.emptyMessage)));
+          }
+          return PagedMasonryGridView<int, MediaGridItem>.count(
+            state: state,
+            fetchNextPage: fetchNextPage,
+            padding: EdgeInsets.all(config.spacing),
+            crossAxisCount: config.columns,
+            mainAxisSpacing: config.spacing,
+            crossAxisSpacing: config.spacing,
+            addAutomaticKeepAlives: false,
+            builderDelegate: PagedChildBuilderDelegate<MediaGridItem>(
+              itemBuilder: (context, item, index) => _MediaGridTile(
                 item: item,
                 gifGate: _gifGate,
                 radius: config.radius,
-                onTap: () => openMediaLightbox(context, controller: widget.controller, initialIndex: index)),
-            firstPageErrorIndicatorBuilder: (context) => FullPageErrorWidget(
-              error: pagingErrorOf(state)?.error,
-              stackTrace: pagingErrorOf(state)?.stackTrace,
-              prefix: widget.firstPageErrorPrefix,
-              onRetry: fetchNextPage,
+                onTap: () => openMediaLightbox(context, controller: widget.controller, initialIndex: index),
+              ),
+              firstPageErrorIndicatorBuilder: (context) => FullPageErrorWidget(
+                error: pagingErrorOf(state)?.error,
+                stackTrace: pagingErrorOf(state)?.stackTrace,
+                prefix: widget.firstPageErrorPrefix,
+                onRetry: fetchNextPage,
+              ),
+              newPageErrorIndicatorBuilder: (context) => FullPageErrorWidget(
+                error: pagingErrorOf(state)?.error,
+                stackTrace: pagingErrorOf(state)?.stackTrace,
+                prefix: widget.newPageErrorPrefix,
+                onRetry: fetchNextPage,
+              ),
+              noItemsFoundIndicatorBuilder: (context) => Center(child: Text(widget.emptyMessage)),
             ),
-            newPageErrorIndicatorBuilder: (context) => FullPageErrorWidget(
-              error: pagingErrorOf(state)?.error,
-              stackTrace: pagingErrorOf(state)?.stackTrace,
-              prefix: widget.newPageErrorPrefix,
-              onRetry: fetchNextPage,
-            ),
-            noItemsFoundIndicatorBuilder: (context) => Center(child: Text(widget.emptyMessage)),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -150,11 +174,12 @@ class _StaticMediaGridState extends State<StaticMediaGrid> {
       crossAxisSpacing: config.spacing,
       itemCount: widget.items.length,
       itemBuilder: (context, index) => _MediaGridTile(
-          item: widget.items[index],
-          gifGate: _gifGate,
-          radius: config.radius,
-          onTap: () => openMediaLightbox(context, staticItems: widget.items, initialIndex: index),
-          onLongPress: widget.onLongPressItem == null ? null : () => widget.onLongPressItem!(widget.items[index])),
+        item: widget.items[index],
+        gifGate: _gifGate,
+        radius: config.radius,
+        onTap: () => openMediaLightbox(context, staticItems: widget.items, initialIndex: index),
+        onLongPress: widget.onLongPressItem == null ? null : () => widget.onLongPressItem!(widget.items[index]),
+      ),
     );
   }
 }
@@ -166,8 +191,13 @@ class _MediaGridTile extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
 
-  const _MediaGridTile(
-      {required this.item, required this.gifGate, this.radius = 8, required this.onTap, this.onLongPress});
+  const _MediaGridTile({
+    required this.item,
+    required this.gifGate,
+    this.radius = 8,
+    required this.onTap,
+    this.onLongPress,
+  });
 
   @override
   State<_MediaGridTile> createState() => _MediaGridTileState();
@@ -212,9 +242,7 @@ class _MediaGridTileState extends State<_MediaGridTile> {
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         onInvoke: widget.onLongPress,
-        child: item is GifGridItem
-            ? _GifGridCell(item: item, gate: widget.gifGate)
-            : item.toWidget(context),
+        child: item is GifGridItem ? _GifGridCell(item: item, gate: widget.gifGate) : item.toWidget(context),
       );
     } else {
       body = GestureDetector(
@@ -234,10 +262,7 @@ class _MediaGridTileState extends State<_MediaGridTile> {
 
     return AspectRatio(
       aspectRatio: item.aspectRatio,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(widget.radius),
-        child: body,
-      ),
+      child: ClipRRect(borderRadius: BorderRadius.circular(widget.radius), child: body),
     );
   }
 }

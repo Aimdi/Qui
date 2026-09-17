@@ -9,7 +9,7 @@
 ![Platforms](https://img.shields.io/badge/Linux%20%7C%20Windows%20%7C%20macOS-desktop-54C5F8?style=for-the-badge&logo=flutter&logoColor=white)
 ![Flutter version](https://img.shields.io/badge/Flutter-3.44+-54C5F8?style=for-the-badge&logo=flutter&logoColor=white)
 
-**Qui** is [XTA](https://github.com/Aimdi/XTA) for the PC. Same app, same local-first X client, same plugins — built for Linux, Windows, and macOS with Flutter.
+**Qui** is [XTA](https://github.com/Aimdi/XTA) for the PC. A local-first X reader built for Linux, Windows, and macOS with Flutter, with selected improvements brought over from XTA.
 
 </div>
 
@@ -17,18 +17,22 @@
 
 Qui is forked from [Aimdi/XTA](https://github.com/Aimdi/XTA) (itself a fork of [Teskann/QuaX](https://github.com/Teskann/QuaX)). Virtually every change on top of upstream was written by an AI coding agent, directed and tested by a human. It exists so XTA’s features work on a desktop, with chrome that belongs on a PC rather than a stretched phone layout.
 
-- Use [XTA](https://github.com/Aimdi/XTA) on Android and **Qui** on desktop. They stay in feature parity.
+- Use [XTA](https://github.com/Aimdi/XTA) on Android and **Qui** on desktop. Shared reader improvements are adapted to Qui’s desktop layout. The apps do not have complete feature parity.
 - Issues welcome; fixes will also be vibe coded.
 
 > [!IMPORTANT]
 > An X account is required. On desktop, sign in by pasting your browser cookies (`auth_token` + `ct0`) after logging into x.com. Subscriptions, saved posts, and settings stay local to the app.
 
-## Features (same as XTA)
+## Reader features
 
 - Local subscriptions and custom **groups** / feeds, including nested groups
 - Media grids, feed order (Recent / Popular), content filters, **Zen mode**
 - Advanced search, quotes, Community Notes, cashtag tickers, polls
 - Saved posts / folders, local likes, broken-subscription cleanup
+- Search loaded X posts offline by text, author, handle, quoted text or expanded link
+- Recent searches stored locally, with individual removal and clear history
+- Bounded, cancellable reads; refresh keeps visible posts and retries the failed operation
+- Cached profiles and conversations remain readable during connection failures
 - Optional plugins: **Reddit**, **Substack**, Karakeep, Deepmarks
 - X Look theming (Light / Dim / Lights Out + accent)
 
@@ -40,9 +44,11 @@ XTA’s phone chrome is replaced with a layout closer to [Flare](https://github.
 - **Centered timeline** column (~640px) and a **reading pane** for opened threads
 - **Trends side panel** on wide windows
 - **Deck mode** — side-by-side columns for each home tab
-- Keyboard: `j`/`k` next/previous post, `/` search, `Esc` close pane, `1`–`9` switch tabs
+- Keyboard: `j`/`k` scroll the selected feed, `/` search, `Esc` close pane, `1`–`9` switch tabs, `Ctrl/Cmd+F` search loaded X posts when the feed has focus
+- Tab selection and scroll controllers follow tab identity when navigation is reordered
+- Visited deck columns stay mounted while scrolling horizontally; clicking a column selects it for keyboard scrolling
 - Right-click matches XTA’s long-press actions (save folder, translate thread, Reddit post menu)
-- Plugin settings (Reddit sign-in, Substack publications, …) stay reachable from Settings → Plugin store when the plugin tab is hidden
+- **Settings → Plugin store → Open** launches an enabled reader even when its tab is hidden; the gear opens its configuration
 
 Qui is X-first, not a multi-network client. Mastodon/Bluesky/RSS live in Flare; Reddit and Substack here are the same optional XTA plugins.
 
@@ -54,7 +60,7 @@ Qui is X-first, not a multi-network client. Mastodon/Bluesky/RSS live in Flare; 
 
 ## Download
 
-Grab desktop builds from [GitHub releases](https://github.com/Aimdi/Qui/releases) when published. CI builds Linux artifacts on every push.
+Grab desktop builds from [GitHub releases](https://github.com/Aimdi/Qui/releases) when published. CI builds Linux artifacts for pull requests and pushes to the main branch.
 
 ## Build locally
 
@@ -94,6 +100,21 @@ Run in debug:
 ```bash
 flutter run -d linux
 ```
+
+## Verify changes
+
+Use the pinned Flutter **3.44.6** through FVM. After dependency setup and code generation:
+
+```bash
+scripts/verify.sh
+fvm flutter build linux --release --no-tree-shake-icons
+```
+
+The verification script runs static analysis, the test suite and a non-mutating
+120-column format check of changed/new Dart files, matching the existing CI
+style policy. Analyzer errors and warnings remain fatal; pre-existing informational
+lints are reported. The [desktop reader upgrade notes](docs/xta-reader-upgrade.md)
+record the XTA reference and the intentionally separate desktop implementation.
 
 ## Desktop login
 

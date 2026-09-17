@@ -39,8 +39,7 @@ class GroupFeedShell extends StatefulWidget {
   State<GroupFeedShell> createState() => _GroupFeedShellState();
 }
 
-class _GroupFeedShellState extends State<GroupFeedShell>
-    with AutomaticKeepAliveClientMixin<GroupFeedShell> {
+class _GroupFeedShellState extends State<GroupFeedShell> with AutomaticKeepAliveClientMixin<GroupFeedShell> {
   late final GroupModel _groupModel;
   final FeedRefreshController _feedRefreshController = FeedRefreshController();
   int _refreshCounter = 0;
@@ -50,8 +49,7 @@ class _GroupFeedShellState extends State<GroupFeedShell>
   SubscriptionsModel? _subscriptionsModel;
   GroupsModel? _groupsModel;
 
-  late final String _callbackKey =
-      'GroupFeedShell-${widget.groupId}-${identityHashCode(this)}';
+  late final String _callbackKey = 'GroupFeedShell-${widget.groupId}-${identityHashCode(this)}';
 
   @override
   bool get wantKeepAlive => true;
@@ -67,10 +65,10 @@ class _GroupFeedShellState extends State<GroupFeedShell>
     super.didChangeDependencies();
     final newSubs = context.read<SubscriptionsModel>();
     final newGroups = context.read<GroupsModel>();
-    if (!identical(newSubs, _subscriptionsModel) ||
-        !identical(newGroups, _groupsModel)) {
+    if (!identical(newSubs, _subscriptionsModel) || !identical(newGroups, _groupsModel)) {
       _subscriptionsModel?.removeReloadListener(_callbackKey);
       _groupsModel?.removeReloadListener(_callbackKey);
+      _groupModel.destroy();
       _subscriptionsModel = newSubs;
       _groupsModel = newGroups;
       _subscriptionsModel!.addReloadListener(_callbackKey, _onReload);
@@ -82,9 +80,7 @@ class _GroupFeedShellState extends State<GroupFeedShell>
   // when this changes, otherwise following someone unrelated would needlessly
   // reload the open timeline.
   String _fingerprint(SubscriptionGroupGet group) {
-    final members = group.subscriptions
-        .map((s) => '${s.id}:${s.inFeed}')
-        .join(',');
+    final members = group.subscriptions.map((s) => '${s.id}:${s.inFeed}').join(',');
     return '$members|${group.includeReplies}|${group.includeRetweets}|${group.popular}|${group.custom}|${group.customRules.cacheKey}';
   }
 
@@ -115,6 +111,7 @@ class _GroupFeedShellState extends State<GroupFeedShell>
     _reloadDebounce?.cancel();
     _subscriptionsModel?.removeReloadListener(_callbackKey);
     _groupsModel?.removeReloadListener(_callbackKey);
+    _groupModel.destroy();
     super.dispose();
   }
 
@@ -122,8 +119,7 @@ class _GroupFeedShellState extends State<GroupFeedShell>
   Widget build(BuildContext context) {
     super.build(context);
     final prefs = PrefService.of(context);
-    final deckMode =
-        useDesktopShell(context) && prefs.get(optionDeckMode) == true;
+    final deckMode = useDesktopShell(context) && prefs.get(optionDeckMode) == true;
 
     return Provider<GroupModel>.value(
       value: _groupModel,
@@ -142,15 +138,10 @@ class _GroupFeedShellState extends State<GroupFeedShell>
                     children: [
                       if (actions.isNotEmpty)
                         Material(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surface.withValues(alpha: 0.92),
+                          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
                           child: SizedBox(
                             height: 40,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: actions,
-                            ),
+                            child: Row(mainAxisAlignment: MainAxisAlignment.end, children: actions),
                           ),
                         ),
                       Expanded(
@@ -158,10 +149,7 @@ class _GroupFeedShellState extends State<GroupFeedShell>
                         // NestedScrollView). Wire the shell controller in deck mode.
                         child: PrimaryScrollController(
                           controller: widget.scrollController,
-                          child: KeyedSubtree(
-                            key: ValueKey(_refreshCounter),
-                            child: widget.bodyBuilder(context),
-                          ),
+                          child: KeyedSubtree(key: ValueKey(_refreshCounter), child: widget.bodyBuilder(context)),
                         ),
                       ),
                     ],
@@ -172,9 +160,7 @@ class _GroupFeedShellState extends State<GroupFeedShell>
                     headerSliverBuilder: (context, innerBoxIsScrolled) {
                       return [
                         SliverAppBar(
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.surface.withValues(alpha: 0.92),
+                          backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
                           surfaceTintColor: Colors.transparent,
                           pinned: useDesktopShell(context),
                           snap: !useDesktopShell(context),
@@ -185,10 +171,7 @@ class _GroupFeedShellState extends State<GroupFeedShell>
                         ),
                       ];
                     },
-                    body: KeyedSubtree(
-                      key: ValueKey(_refreshCounter),
-                      child: widget.bodyBuilder(context),
-                    ),
+                    body: KeyedSubtree(key: ValueKey(_refreshCounter), child: widget.bodyBuilder(context)),
                   );
           },
         );
@@ -211,24 +194,22 @@ List<Widget> defaultGroupActions(
   List<Widget> extra = const [],
 }) {
   return [
-    if (showMore)
-      IconButton(
-        icon: const Icon(Icons.build_outlined),
-        onPressed: () => showFeedSettings(context, model),
-      ),
+    if (showMore) IconButton(icon: const Icon(Icons.build_outlined), onPressed: () => showFeedSettings(context, model)),
     if (scrollToTopController != null)
       IconButton(
         icon: const Icon(Icons.arrow_upward),
-        onPressed: () async =>
-            await scrollToTop(context, scrollToTopController),
+        onPressed: () async => await scrollToTop(context, scrollToTopController),
       ),
+    IconButton(
+      icon: const Icon(Icons.manage_search_rounded),
+      tooltip: L10n.of(context).reader_search_loaded,
+      onPressed: () => context.read<FeedRefreshController>().searchLoaded(),
+    ),
     if (showRefresh)
       IconButton(
         icon: const Icon(Icons.refresh_rounded),
         tooltip: L10n.of(context).refresh,
-        onPressed:
-            onRefresh ??
-            () async => await context.read<FeedRefreshController>().refresh(),
+        onPressed: onRefresh ?? () async => await context.read<FeedRefreshController>().refresh(),
       ),
     // Settings lives on the desktop rail; keep the AppBar action on compact only.
     if (showSettings && !useDesktopShell(context))

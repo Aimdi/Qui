@@ -1,3 +1,4 @@
+import 'package:qui/plugins/plugin_reader.dart';
 import 'package:flutter/material.dart';
 import 'package:pref/pref.dart';
 import 'package:provider/provider.dart';
@@ -42,7 +43,7 @@ class _SettingsPluginStoreFragmentState extends State<SettingsPluginStoreFragmen
               await plugin.setEnabled(prefs, value);
               if (!context.mounted) return;
               await context.read<HomeModel>().loadPages();
-              setState(() {});
+              if (mounted) setState(() {});
             },
           );
 
@@ -54,6 +55,19 @@ class _SettingsPluginStoreFragmentState extends State<SettingsPluginStoreFragmen
             mainAxisSize: MainAxisSize.min,
             children: [
               row,
+              if (enabled && plugin.homePage(context) != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: FilledButton.tonalIcon(
+                      onPressed: () =>
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => PluginReader(plugin: plugin))),
+                      icon: const Icon(Icons.open_in_new),
+                      label: Text(L10n.of(context).reader_open_plugin),
+                    ),
+                  ),
+                ),
               // Plugins whose feature is reachable from the Groups tab as well
               // can give up their own tab.
               if (tabPref != null)
@@ -71,12 +85,11 @@ class _SettingsPluginStoreFragmentState extends State<SettingsPluginStoreFragmen
                           // or the switch would turn on and nothing appear.
                           if (value) {
                             final seeded = prefs.getStringList(optionSeededPluginTabs) ?? const <String>[];
-                            await prefs.set(
-                                optionSeededPluginTabs, seeded.where((e) => e != plugin.id).toList());
+                            await prefs.set(optionSeededPluginTabs, seeded.where((e) => e != plugin.id).toList());
                           }
                           if (!context.mounted) return;
                           await context.read<HomeModel>().loadPages();
-                          setState(() {});
+                          if (mounted) setState(() {});
                         }
                       : null,
                 ),
@@ -85,16 +98,18 @@ class _SettingsPluginStoreFragmentState extends State<SettingsPluginStoreFragmen
               if (hasSettings)
                 ListTile(
                   enabled: enabled,
-                  leading: const SizedBox(width: 24),
+                  leading: const Icon(Icons.settings_outlined),
                   title: Text(L10n.of(context).settings),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => plugin.settingsScreen(context)!),
-                    );
-                    if (mounted) setState(() {});
-                  },
+                  onTap: !enabled
+                      ? null
+                      : () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => plugin.settingsScreen(context)!),
+                          );
+                          if (mounted) setState(() {});
+                        },
                 ),
             ],
           );

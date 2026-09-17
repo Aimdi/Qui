@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:pref/pref.dart';
 import 'package:qui/constants.dart';
@@ -19,11 +20,7 @@ class QuiShell extends StatefulWidget {
   final List<NavigationPage> pages;
   final BasePrefService prefs;
   final int initialPage;
-  final List<Widget> Function(
-    Map<int, ScrollController> scrollControllers,
-    Map<int, FocusNode> focusNodes,
-  )
-  builder;
+  final List<Widget> Function(Map<int, ScrollController> scrollControllers, Map<int, FocusNode> focusNodes) builder;
 
   const QuiShell({
     super.key,
@@ -47,6 +44,7 @@ class _QuiShellState extends State<QuiShell> {
   final GlobalKey<DeckBodyState> _deckKey = GlobalKey<DeckBodyState>();
   final DetailPaneController _detailPaneController = DetailPaneController();
   bool _deckMode = false;
+  bool? _wasPageMode;
   int _deckRows = 1;
 
   void unfocusOtherPages() {
@@ -76,8 +74,8 @@ class _QuiShellState extends State<QuiShell> {
   @override
   void initState() {
     super.initState();
-    _currentPage = widget.initialPage;
-    _pageController = PageController(initialPage: widget.initialPage);
+    _currentPage = widget.pages.isEmpty ? 0 : widget.initialPage.clamp(0, widget.pages.length - 1);
+    _pageController = PageController(initialPage: _currentPage, keepPage: false);
     _sideTrendsController = ScrollController();
     _deckScrollController = ScrollController();
     _deckMode = widget.prefs.get(optionDeckMode) == true;
@@ -102,12 +100,38 @@ class _QuiShellState extends State<QuiShell> {
   @override
   void didUpdateWidget(covariant QuiShell oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.pages.length != oldWidget.pages.length) {
-      _ensureControllers(widget.pages.length);
-      if (_currentPage >= widget.pages.length && widget.pages.isNotEmpty) {
-        _currentPage = widget.pages.length - 1;
+    final oldIds = oldWidget.pages.map((page) => page.id).toList();
+    final newIds = widget.pages.map((page) => page.id).toList();
+    if (!listEquals(oldIds, newIds)) {
+      final selectedId = oldIds.elementAtOrNull(_currentPage);
+      final oldScroll = {for (var i = 0; i < oldIds.length; i++) oldIds[i]: _scrollControllers[i]!};
+      final oldFocus = {for (var i = 0; i < oldIds.length; i++) oldIds[i]: _focusNodes[i]!};
+      _scrollControllers.clear();
+      _focusNodes.clear();
+      for (var i = 0; i < newIds.length; i++) {
+        _scrollControllers[i] = oldScroll.remove(newIds[i]) ?? ScrollController();
+        _focusNodes[i] = oldFocus.remove(newIds[i]) ?? FocusNode();
       }
+      // Retired page widgets detach at the end of this frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        for (final controller in oldScroll.values) {
+          controller.dispose();
+        }
+        for (final node in oldFocus.values) {
+          node.dispose();
+        }
+      });
+      final selected = newIds.indexOf(selectedId ?? '');
+      _currentPage = selected >= 0 ? selected : (newIds.isEmpty ? 0 : _currentPage.clamp(0, newIds.length - 1));
+      _alignPage();
     }
+  }
+
+  void _alignPage() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pageController.hasClients || widget.pages.isEmpty) return;
+      _pageController.jumpToPage(_currentPage);
+    });
   }
 
   Future<void> _selectPage(int index) async {
@@ -117,11 +141,7 @@ class _QuiShellState extends State<QuiShell> {
       if (tappedId == 'feed' || tappedId.startsWith('group-')) {
         final scrollController = _scrollControllers[_currentPage];
         if (scrollController != null && scrollController.hasClients) {
-          await scrollController.animateTo(
-            0,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOutCubic,
-          );
+          await scrollController.animateTo(0, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic);
         }
       }
       if (tappedId == 'trending') {
@@ -129,8 +149,9 @@ class _QuiShellState extends State<QuiShell> {
       }
       return;
     }
-    unfocusOtherPages();
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _currentPage = index);
+    unfocusOtherPages();
     if (_deckMode && useDesktopShell(context)) {
       _deckKey.currentState?.scrollToIndex(index);
     } else if (_pageController.hasClients) {
@@ -139,11 +160,7 @@ class _QuiShellState extends State<QuiShell> {
   }
 
   void _openSearch() {
-    Navigator.pushNamed(
-      context,
-      routeSearch,
-      arguments: SearchArguments(0, focusInputOnOpen: true),
-    );
+    Navigator.pushNamed(context, routeSearch, arguments: SearchArguments(0, focusInputOnOpen: true));
   }
 
   void _openSettings() {
@@ -153,7 +170,15 @@ class _QuiShellState extends State<QuiShell> {
   @override
   Widget build(BuildContext context) {
     final desktop = useDesktopShell(context);
-    final pages = widget.builder(_scrollControllers, _focusNodes);
+    final pageMode = !desktop || !_deckMode;
+    if (_wasPageMode != pageMode) {
+      _wasPageMode = pageMode;
+      if (pageMode) _alignPage();
+    }
+    final built = widget.builder(_scrollControllers, _focusNodes);
+    final pages = [
+      for (var i = 0; i < built.length; i++) KeyedSubtree(key: ValueKey(widget.pages[i].id), child: built[i]),
+    ];
 
     if (!desktop) {
       return _MobileShell(
@@ -175,10 +200,8 @@ class _QuiShellState extends State<QuiShell> {
         onSearch: _openSearch,
         onSettings: _openSettings,
         onClosePane: _detailPaneController.close,
-        onScrollNext: () =>
-            scrollFeedByStep(_scrollControllers[_currentPage], direction: 1),
-        onScrollPrevious: () =>
-            scrollFeedByStep(_scrollControllers[_currentPage], direction: -1),
+        onScrollNext: () => scrollFeedByStep(_scrollControllers[_currentPage], direction: 1),
+        onScrollPrevious: () => scrollFeedByStep(_scrollControllers[_currentPage], direction: -1),
         onSelectTab: (index) {
           _selectPage(index);
         },
@@ -246,9 +269,7 @@ class _MobileShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
-    final safeIndex = pages.isEmpty
-        ? 0
-        : currentPage.clamp(0, pages.length - 1);
+    final safeIndex = pages.isEmpty ? 0 : currentPage.clamp(0, pages.length - 1);
     return Scaffold(
       drawer: Drawer(
         child: ListView(
@@ -272,11 +293,7 @@ class _MobileShell extends StatelessWidget {
           ],
         ),
       ),
-      body: PageView(
-        controller: pageController,
-        onPageChanged: onPageChanged,
-        children: pageChildren,
-      ),
+      body: PageView(controller: pageController, onPageChanged: onPageChanged, children: pageChildren),
       bottomNavigationBar: pages.isEmpty
           ? null
           : NavigationBar(
@@ -285,9 +302,7 @@ class _MobileShell extends StatelessWidget {
                   ? NavigationDestinationLabelBehavior.alwaysShow
                   : NavigationDestinationLabelBehavior.alwaysHide,
               shadowColor: Colors.transparent,
-              backgroundColor: Theme.of(
-                context,
-              ).colorScheme.surface.withValues(alpha: 0.92),
+              backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
               height: 64,
               destinations: pages
                   .map(
@@ -342,20 +357,13 @@ class _DesktopShell extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final showLabels = prefs.get(optionShowNavigationLabels) == true;
-    final safeIndex = pages.isEmpty
-        ? 0
-        : currentPage.clamp(0, pages.length - 1);
+    final safeIndex = pages.isEmpty ? 0 : currentPage.clamp(0, pages.length - 1);
     // The right column hosts either the opened thread (master/detail reading
     // pane) or, on the home feed with nothing selected, the trends panel.
     final pane = DetailPaneScope.maybeOf(context);
     final hasDetail = pane != null && pane.hasSelection;
-    final showFeedTrends =
-        !deckMode &&
-        isExpandedLayout(context) &&
-        pages.isNotEmpty &&
-        pages[safeIndex].id == 'feed';
-    final showRightPane =
-        !deckMode && isExpandedLayout(context) && (hasDetail || showFeedTrends);
+    final showFeedTrends = !deckMode && isExpandedLayout(context) && pages.isNotEmpty && pages[safeIndex].id == 'feed';
+    final showRightPane = !deckMode && isExpandedLayout(context) && (hasDetail || showFeedTrends);
 
     final railBg = scheme.surfaceContainerLow;
 
@@ -395,9 +403,7 @@ class _DesktopShell extends StatelessWidget {
                           return _RailDestination(
                             selected: selected,
                             icon: selected ? page.selectedIcon : page.icon,
-                            label: showLabels
-                                ? page.titleBuilder(context)
-                                : null,
+                            label: showLabels ? page.titleBuilder(context) : null,
                             tooltip: page.titleBuilder(context),
                             onTap: () => onDestinationSelected(index),
                           );
@@ -413,11 +419,7 @@ class _DesktopShell extends StatelessWidget {
                     ),
                     _RailDestination(
                       selected: deckMode,
-                      icon: Icon(
-                        deckMode
-                            ? Icons.view_column_rounded
-                            : Icons.view_column_outlined,
-                      ),
+                      icon: Icon(deckMode ? Icons.view_column_rounded : Icons.view_column_outlined),
                       label: showLabels ? L10n.of(context).deck_mode : null,
                       tooltip: L10n.of(context).deck_mode,
                       onTap: () {
@@ -437,11 +439,7 @@ class _DesktopShell extends StatelessWidget {
               ),
             ),
           ),
-          VerticalDivider(
-            width: 1,
-            thickness: 1,
-            color: scheme.outlineVariant.withValues(alpha: 0.45),
-          ),
+          VerticalDivider(width: 1, thickness: 1, color: scheme.outlineVariant.withValues(alpha: 0.45)),
           Expanded(
             child: ColoredBox(
               color: scheme.surface,
@@ -450,17 +448,13 @@ class _DesktopShell extends StatelessWidget {
                       key: deckKey,
                       pages: pages,
                       focusedIndex: safeIndex,
-                      scrollController: deckRows <= 1
-                          ? deckScrollController
-                          : null,
+                      scrollController: deckRows <= 1 ? deckScrollController : null,
                       rows: deckRows,
                       onFocusChanged: onPageChanged,
                       children: pageChildren,
                     )
                   : ContentFrame(
-                      maxWidth: showRightPane
-                          ? quiTimelineMaxWidth + 16
-                          : quiTimelineMaxWidth + 40,
+                      maxWidth: showRightPane ? quiTimelineMaxWidth + 16 : quiTimelineMaxWidth + 40,
                       child: PageView(
                         controller: pageController,
                         onPageChanged: onPageChanged,
@@ -471,11 +465,7 @@ class _DesktopShell extends StatelessWidget {
             ),
           ),
           if (showRightPane) ...[
-            VerticalDivider(
-              width: 1,
-              thickness: 1,
-              color: scheme.outlineVariant.withValues(alpha: 0.45),
-            ),
+            VerticalDivider(width: 1, thickness: 1, color: scheme.outlineVariant.withValues(alpha: 0.45)),
             SizedBox(
               width: hasDetail ? quiDetailPaneWidth : quiSidePanelWidth,
               child: Material(
@@ -484,10 +474,7 @@ class _DesktopShell extends StatelessWidget {
                   left: false,
                   child: hasDetail
                       ? DetailPane(controller: pane)
-                      : _SideDiscoverPanel(
-                          onOpenSearch: onSearch,
-                          scrollController: sideTrendsController,
-                        ),
+                      : _SideDiscoverPanel(onOpenSearch: onSearch, scrollController: sideTrendsController),
                 ),
               ),
             ),
@@ -531,12 +518,7 @@ class _RailDestination extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconTheme(
-              data: IconThemeData(
-                size: 22,
-                color: selected
-                    ? scheme.onSecondaryContainer
-                    : scheme.onSurfaceVariant,
-              ),
+              data: IconThemeData(size: 22, color: selected ? scheme.onSecondaryContainer : scheme.onSurfaceVariant),
               child: Center(child: icon),
             ),
           ),
@@ -560,11 +542,7 @@ class _RailDestination extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       waitDuration: const Duration(milliseconds: 500),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: content,
-      ),
+      child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12), child: content),
     );
   }
 }
@@ -573,10 +551,7 @@ class _SideDiscoverPanel extends StatelessWidget {
   final VoidCallback onOpenSearch;
   final ScrollController scrollController;
 
-  const _SideDiscoverPanel({
-    required this.onOpenSearch,
-    required this.scrollController,
-  });
+  const _SideDiscoverPanel({required this.onOpenSearch, required this.scrollController});
 
   @override
   Widget build(BuildContext context) {
@@ -589,32 +564,21 @@ class _SideDiscoverPanel extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Material(
-            color: theme.colorScheme.surfaceContainerHighest.withValues(
-              alpha: 0.55,
-            ),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(24),
             child: InkWell(
               borderRadius: BorderRadius.circular(24),
               onTap: onOpenSearch,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.search,
-                      size: 18,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                    Icon(Icons.search, size: 18, color: theme.colorScheme.onSurfaceVariant),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         l10n.search,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),
                     ),
                   ],
@@ -625,12 +589,7 @@ class _SideDiscoverPanel extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Text(
-            l10n.trending,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          child: Text(l10n.trending, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
         ),
         Expanded(child: TrendsList(scrollController: scrollController)),
       ],

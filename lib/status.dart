@@ -1,3 +1,5 @@
+import 'package:qui/utils/cached_page.dart';
+import 'package:qui/utils/read_request_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:qui/client/client.dart';
 import 'package:qui/constants.dart';
@@ -13,7 +15,6 @@ import 'package:pref/pref.dart';
 import 'package:provider/provider.dart';
 import 'package:qui/utils/paging.dart';
 import 'package:qui/utils/translation.dart';
-import 'package:logging/logging.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 
 /// Zen mode hides the replies under an opened post until the reader
@@ -34,12 +35,13 @@ class StatusScreenArguments {
   final int initialMediaIndex;
   final TweetWithCard? initialTweet;
 
-  StatusScreenArguments(
-      {required this.id,
-      required this.username,
-      this.tweetOpened = false,
-      this.initialMediaIndex = 0,
-      this.initialTweet});
+  StatusScreenArguments({
+    required this.id,
+    required this.username,
+    this.tweetOpened = false,
+    this.initialMediaIndex = 0,
+    this.initialTweet,
+  });
 
   @override
   String toString() {
@@ -64,12 +66,13 @@ class StatusScreen extends StatelessWidget {
     final args = arguments ?? ModalRoute.of(context)!.settings.arguments as StatusScreenArguments;
 
     return _StatusScreen(
-        username: args.username,
-        id: args.id,
-        tweetOpened: args.tweetOpened,
-        initialMediaIndex: args.initialMediaIndex,
-        initialTweet: args.initialTweet,
-        leading: leading);
+      username: args.username,
+      id: args.id,
+      tweetOpened: args.tweetOpened,
+      initialMediaIndex: args.initialMediaIndex,
+      initialTweet: args.initialTweet,
+      leading: leading,
+    );
   }
 }
 
@@ -81,21 +84,20 @@ class _StatusScreen extends StatefulWidget {
   final TweetWithCard? initialTweet;
   final Widget? leading;
 
-  const _StatusScreen(
-      {required this.username,
-      required this.id,
-      required this.tweetOpened,
-      this.initialMediaIndex = 0,
-      this.initialTweet,
-      this.leading});
+  const _StatusScreen({
+    required this.username,
+    required this.id,
+    required this.tweetOpened,
+    this.initialMediaIndex = 0,
+    this.initialTweet,
+    this.leading,
+  });
 
   @override
   _StatusScreenState createState() => _StatusScreenState();
 }
 
 class _StatusScreenState extends State<_StatusScreen> {
-  static final log = Logger('StatusScreen');
-
   late final CursorPagingController<String, TweetChain> _paging;
   PagingController<int, TweetChain> get _pagingController => _paging.pagingController;
   final _scrollController = AutoScrollController();
@@ -140,10 +142,7 @@ class _StatusScreenState extends State<_StatusScreen> {
   // rather than replacing it with a "not found" message.
   bool get _conversationCameBackEmpty {
     final state = _pagingController.value;
-    return widget.initialTweet != null &&
-        (state.items?.isEmpty ?? false) &&
-        state.error == null &&
-        !state.hasNextPage;
+    return widget.initialTweet != null && (state.items?.isEmpty ?? false) && state.error == null && !state.hasNextPage;
   }
 
   void _maybeStartFirstLoad() {
@@ -187,31 +186,19 @@ class _StatusScreenState extends State<_StatusScreen> {
   /// screen when the network is down or every account is rate limited.
   Future<TweetStatus> _fetchFirstPage() async {
     final key = TimelineCache.threadKey(widget.id);
-    final cache = TimelineCache(await Repository.writable());
-
-    // The thread screen has no pull-to-refresh, so nothing here has to bypass
-    // the cache; re-entering the screen after the window expires re-fetches.
-    final cached = await cache.read(key, maxAge: threadCacheMaxAge);
-    if (cached != null) {
-      return cached;
-    }
-
-    try {
-      final result = await Twitter.getTweet(widget.id);
-      await cache.write(key, result);
-      return result;
-    } catch (e) {
-      final stale = await cache.readStale(key);
-      if (stale == null) {
-        rethrow;
-      }
-      log.info('Showing the cached thread for ${widget.id} after $e');
-      return stale;
-    }
+    Future<TimelineCache> cache() async => TimelineCache(await Repository.writable());
+    return loadCachedPage<TweetStatus>(
+      readFresh: () async => (await cache()).read(key, maxAge: threadCacheMaxAge),
+      readStale: () async => (await cache()).readStale(key),
+      fetch: () => Twitter.getTweet(widget.id).timeout(const Duration(seconds: 30)),
+      write: (result) async => (await cache()).write(key, result),
+    );
   }
 
   Future<CursorPage<String, TweetChain>> _fetchPage(String? cursor) async {
     var result = cursor == null ? await _fetchFirstPage() : await Twitter.getTweet(widget.id, cursor: cursor);
+
+    ReadWork.checkpoint();
 
     // Cursor didn't advance on a later page -> nothing new, drop the page.
     if (cursor != null && result.cursorBottom == cursor) {
@@ -278,8 +265,9 @@ class _StatusScreenState extends State<_StatusScreen> {
       body: MultiProvider(
         providers: [
           ChangeNotifierProvider<TweetContextState>(
-              create: (context) =>
-                  TweetContextState(PrefService.of(context, listen: false).get(optionTweetsHideSensitive))),
+            create: (context) =>
+                TweetContextState(PrefService.of(context, listen: false).get(optionTweetsHideSensitive)),
+          ),
           // Long-pressing any translate button translates the whole conversation
           ChangeNotifierProvider<TranslationBroadcast>(create: (_) => TranslationBroadcast()),
           ChangeNotifierProvider<ZenRepliesState>(create: (_) => ZenRepliesState()),
@@ -351,12 +339,13 @@ class _StatusScreenState extends State<_StatusScreen> {
       children: [
         for (final chain in visible)
           TweetConversation(
-              id: chain.id,
-              tweets: chain.tweets,
-              username: null,
-              isPinned: chain.isPinned,
-              tweetOpened: widget.tweetOpened,
-              initialMediaIndex: chain.id == widget.id ? widget.initialMediaIndex : 0),
+            id: chain.id,
+            tweets: chain.tweets,
+            username: null,
+            isPinned: chain.isPinned,
+            tweetOpened: widget.tweetOpened,
+            initialMediaIndex: chain.id == widget.id ? widget.initialMediaIndex : 0,
+          ),
         InkWell(
           onTap: () => context.read<ZenRepliesState>().reveal(),
           child: Padding(
@@ -403,12 +392,13 @@ class _StatusScreenState extends State<_StatusScreen> {
       index: index,
       highlightColor: Theme.of(context).colorScheme.primary,
       child: TweetConversation(
-          id: chain.id,
-          tweets: chain.tweets,
-          username: null,
-          isPinned: chain.isPinned,
-          tweetOpened: widget.tweetOpened,
-          initialMediaIndex: chain.id == widget.id ? widget.initialMediaIndex : 0),
+        id: chain.id,
+        tweets: chain.tweets,
+        username: null,
+        isPinned: chain.isPinned,
+        tweetOpened: widget.tweetOpened,
+        initialMediaIndex: chain.id == widget.id ? widget.initialMediaIndex : 0,
+      ),
     );
   }
 
@@ -435,11 +425,7 @@ class _StatusScreenState extends State<_StatusScreen> {
           onRetry: fetchNextPage,
         ),
         noItemsFoundIndicatorBuilder: (context) {
-          return Center(
-            child: Text(
-              L10n.of(context).could_not_find_any_tweets_by_this_user,
-            ),
-          );
+          return Center(child: Text(L10n.of(context).could_not_find_any_tweets_by_this_user));
         },
         noMoreItemsIndicatorBuilder: _showMoreIndicator,
       ),
@@ -478,10 +464,7 @@ class _StatusScreenState extends State<_StatusScreen> {
           return _buildThreadFooter(context, state, fetchNextPage);
         }
         final node = nodes[index];
-        return ThreadIndent(
-          depth: node.depth,
-          child: _conversationTile(context, node.chain, index),
-        );
+        return ThreadIndent(depth: node.depth, child: _conversationTile(context, node.chain, index));
       },
     );
   }
@@ -502,7 +485,10 @@ class _StatusScreenState extends State<_StatusScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) fetchNextPage();
       });
-      return const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()));
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator()),
+      );
     }
     return _showMoreIndicator(context);
   }
