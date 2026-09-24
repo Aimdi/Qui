@@ -1,8 +1,9 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io' show Platform, SocketException;
 
 import 'package:async_button_builder/async_button_builder.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,6 +16,8 @@ import 'package:qui/utils/desktop_files.dart';
 import 'package:qui/constants.dart';
 import 'package:qui/generated/l10n.dart';
 import 'package:qui/ui/layout.dart';
+import 'package:qui/ui/read_failure_kind.dart';
+import 'package:qui/settings/diagnostics_screen.dart';
 
 /// Snackbar for work already under way, with a small spinner in place of an
 /// icon so a slow download does not look like a frozen one.
@@ -526,6 +529,30 @@ class FullPageErrorWidget extends FritterErrorWidget {
       return EndpointRefusedErrorWidget(onRetry: onRetry);
     }
 
+    if (error is TransactionIdUnavailableException) {
+      return ActionableErrorWidget(
+        emoji: '🧾',
+        icon: Icons.receipt_long_outlined,
+        title: L10n.of(context).reader_transaction_unavailable,
+        details: L10n.of(context).reader_transaction_unavailable_hint,
+        actions: [
+          if (onRetry != null)
+            TextButton(
+              onPressed: () => onRetry(),
+              child: Text(L10n.of(context).retry),
+            ),
+          TextButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DiagnosticsScreen()),
+            ),
+            icon: const Icon(Icons.info_outline),
+            label: Text(L10n.of(context).diagnostics),
+          ),
+        ],
+      );
+    }
+
     if (error is TwitterError) {
       return createEmojiError(error);
     }
@@ -539,6 +566,71 @@ class FullPageErrorWidget extends FritterErrorWidget {
         ).this_took_too_long_to_load_please_check_your_network_connection,
         onRetry: onRetry,
       );
+    }
+
+    if (error is http.ClientException) {
+      return EmojiErrorWidget(
+        emoji: '🔌',
+        message: L10n.of(context).could_not_contact_twitter,
+        errorMessage: L10n.of(context).reader_connection_failed,
+        onRetry: onRetry,
+      );
+    }
+
+    if (error is HttpException) {
+      final kind = readFailureKind(error);
+      switch (kind) {
+        case ReadFailureKind.rateLimited:
+          return RateLimitErrorWidget(onRetry: onRetry);
+        case ReadFailureKind.session:
+          return NoWorkingAccountErrorWidget(onRetry: onRetry);
+        case ReadFailureKind.serviceUnavailable:
+          return ActionableErrorWidget(
+            emoji: '🛠️',
+            icon: Icons.cloud_off_outlined,
+            title: L10n.of(context).reader_service_unavailable,
+            details: L10n.of(context).reader_service_unavailable_hint,
+            actions: [
+              if (onRetry != null)
+                TextButton(
+                  onPressed: () => onRetry(),
+                  child: Text(L10n.of(context).retry),
+                ),
+            ],
+          );
+        case ReadFailureKind.unavailable:
+          return ActionableErrorWidget(
+            emoji: '🚫',
+            icon: Icons.block_outlined,
+            title: L10n.of(context).reader_request_unavailable,
+            details: L10n.of(context).reader_request_unavailable_hint,
+            actions: [
+              if (onRetry != null)
+                TextButton(
+                  onPressed: () => onRetry(),
+                  child: Text(L10n.of(context).retry),
+                ),
+            ],
+          );
+        case ReadFailureKind.connection:
+        case ReadFailureKind.timedOut:
+        case ReadFailureKind.endpointRefused:
+        case ReadFailureKind.transactionUnavailable:
+        case ReadFailureKind.unknown:
+          return ActionableErrorWidget(
+            emoji: '🌐',
+            icon: Icons.public_off_outlined,
+            title: L10n.of(context).oops_something_went_wrong,
+            details: L10n.of(context).reader_http_error(error.statusCode),
+            actions: [
+              if (onRetry != null)
+                TextButton(
+                  onPressed: () => onRetry(),
+                  child: Text(L10n.of(context).retry),
+                ),
+            ],
+          );
+      }
     }
 
     return SingleChildScrollView(
