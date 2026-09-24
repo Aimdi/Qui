@@ -1268,5 +1268,25 @@
   "reader_cached_profile": "Gespeichertes Profil wird angezeigt.",
   "@reader_cached_profile": {},
   "reader_refresh_failed": "Aktualisierung fehlgeschlagen. Gespeicherte Inhalte sind weiterhin verfügbar.",
-  "@reader_refresh_failed": {}
+  "@reader_refresh_failed": {},
+  "reader_request_unavailable": "Diese Anfrage ist nicht verfügbar",
+  "@reader_request_unavailable": {},
+  "reader_request_unavailable_hint": "X hat diese Anfrage abgewiesen. Sie ist möglicherweise vorübergehend nicht verfügbar oder dieser Teil des Dienstes hat sich geändert.",
+  "@reader_request_unavailable_hint": {},
+  "reader_service_unavailable": "X ist vorübergehend nicht verfügbar",
+  "@reader_service_unavailable": {},
+  "reader_service_unavailable_hint": "X hat einen Serverfehler zurückgegeben. Du kannst zwischengespeicherte Beiträge weiterlesen und es später erneut versuchen.",
+  "@reader_service_unavailable_hint": {},
+  "reader_http_error": "X hat HTTP {code} zurückgegeben.",
+  "@reader_http_error": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "reader_transaction_unavailable": "X-Anfragesignierung ist nicht verfügbar",
+  "@reader_transaction_unavailable": {},
+  "reader_transaction_unavailable_hint": "Qui konnte das Transaktions-Token, das X derzeit verlangt, nicht ableiten. Deine Konten können weiterhin in Ordnung sein; versuche es gleich noch einmal oder prüfe die Diagnose.",
+  "@reader_transaction_unavailable_hint": {}
 }
