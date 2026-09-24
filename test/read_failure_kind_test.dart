@@ -10,7 +10,7 @@ void main() {
   group('readFailureKind', () {
     test('classifies transient connectivity failures', () {
       expect(
-        readFailureKind(const TimeoutException('slow')),
+        readFailureKind(TimeoutException('slow')),
         ReadFailureKind.timedOut,
       );
       expect(
@@ -70,7 +70,7 @@ void main() {
       final service = HttpException(http.Response('', 503));
       final unavailable = HttpException(http.Response('', 404));
 
-      expect(recoverableReadFailure(const TimeoutException('slow')), isNotNull);
+      expect(recoverableReadFailure(TimeoutException('slow')), isNotNull);
       expect(recoverableReadFailure(service), same(service));
       expect(recoverableReadFailure(unavailable), isNull);
       expect(recoverableReadFailure(RateLimitedException()), isNull);
