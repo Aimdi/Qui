@@ -19,9 +19,12 @@ class ProfileSaved extends StatefulWidget {
   State<ProfileSaved> createState() => _ProfileSavedState();
 }
 
-class _ProfileSavedState extends State<ProfileSaved> {
+class _ProfileSavedState extends State<ProfileSaved> with AutomaticKeepAliveClientMixin<ProfileSaved> {
   late final CursorPagingController<int, SavedTweet> _paging;
   PagingController<int, SavedTweet> get _pagingController => _paging.pagingController;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -46,6 +49,7 @@ class _ProfileSavedState extends State<ProfileSaved> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Consumer<TweetContextState>(builder: (context, model, child) {
       if (model.hideSensitive && (widget.user.possiblySensitive ?? false)) {
         return EmojiErrorWidget(
