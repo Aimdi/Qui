@@ -187,6 +187,7 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
       }
 
       nestedScrollViewState.innerController.addListener(_listen);
+      nestedScrollViewState.outerController.addListener(_listen);
     });
 
     var description = widget.profile.user.description;
@@ -205,47 +206,60 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
     ProfileTabs defaultProfileTab = ProfileTabs.values.byName(PrefService.of(context).get(optionDefaultProfileTab));
     final int initialTabIdx = widget.defaultTabIndex ?? profileTabs.indexWhere((e) => e.id == defaultProfileTab);
 
-    _tabController = TabController(length: 4, vsync: this, initialIndex: initialTabIdx);
+    final safeIndex = initialTabIdx.clamp(0, profileTabs.length - 1).toInt();
+    _tabController = TabController(
+      length: profileTabs.length,
+      vsync: this,
+      initialIndex: safeIndex,
+    );
+    _tabController.addListener(_handleTabChanged);
   }
 
   @override
   void dispose() {
-    nestedScrollViewKey.currentState?.innerController.removeListener(_listen);
-    if (_tabsInitialized) _tabController.dispose();
+    final scrollState = nestedScrollViewKey.currentState;
+    scrollState?.innerController.removeListener(_listen);
+    scrollState?.outerController.removeListener(_listen);
+    if (_tabsInitialized) {
+      _tabController.removeListener(_handleTabChanged);
+      _tabController.dispose();
+    }
 
     super.dispose();
   }
 
   void _listen() {
-    var nestedScrollViewState = nestedScrollViewKey.currentState;
-    if (nestedScrollViewState == null) {
-      return;
-    }
+    final state = nestedScrollViewKey.currentState;
+    if (state == null) return;
 
-    if (!nestedScrollViewState.innerController.hasClients) {
-      return;
-    }
+    final innerScrolled = state.innerController.hasClients &&
+        state.innerController.positions.any((position) => position.pixels >= 400);
+    final outerScrolled = state.outerController.hasClients &&
+        state.outerController.positions.any((position) => position.pixels >= 400);
+    final show = innerScrolled || outerScrolled;
 
-    // Show the "scroll to top" button if we scroll down a bit, and hide it if we go back above
-    if (nestedScrollViewState.innerController.positions.any((element) => element.pixels >= 400)) {
-      if (!_showBackToTopButton) {
-        setState(() {
-          _showBackToTopButton = true;
-        });
-      }
-    } else {
-      if (_showBackToTopButton) {
-        setState(() {
-          _showBackToTopButton = false;
-        });
-      }
+    if (show != _showBackToTopButton && mounted) {
+      setState(() => _showBackToTopButton = show);
     }
   }
 
+  void _handleTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _listen();
+    });
+  }
+
   void _scrollToTop() {
-    // We scroll the outer controller (the whole nested scroll view and children) to the top
-    // TODO: No animation due to Flutter crashing on huge lists (https://github.com/flutter/flutter/issues/52207) (#607)
-    nestedScrollViewKey.currentState?.outerController.jumpTo(0);
+    // Jump both halves of the nested profile so changing filters/tabs never
+    // leaves the header or list stranded at an old offset.
+    final state = nestedScrollViewKey.currentState;
+    if (state == null) return;
+    if (state.innerController.hasClients) state.innerController.jumpTo(0);
+    if (state.outerController.hasClients) state.outerController.jumpTo(0);
+    if (_showBackToTopButton) {
+      setState(() => _showBackToTopButton = false);
+    }
   }
 
   @override
