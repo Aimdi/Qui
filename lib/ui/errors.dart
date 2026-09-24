@@ -572,7 +572,7 @@ class FullPageErrorWidget extends FritterErrorWidget {
       return EmojiErrorWidget(
         emoji: '🔌',
         message: L10n.of(context).could_not_contact_twitter,
-        errorMessage: L10n.of(context).reader_connection_failed,
+        errorMessage: L10n.of(context).please_check_your_internet_connection_error_message(error.message),
         onRetry: onRetry,
       );
     }
