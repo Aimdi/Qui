@@ -29,9 +29,11 @@ Qui is forked from [Aimdi/XTA](https://github.com/Aimdi/XTA) (itself a fork of [
 - Media grids, feed order (Recent / Popular), content filters, **Zen mode**
 - Advanced search, quotes, Community Notes, cashtag tickers, polls
 - Saved posts / folders, local likes, broken-subscription cleanup
+- Saved library sorting plus multi-select move/delete for desktop cleanup
 - Search loaded X posts offline by text, author, handle, quoted text or expanded link
-- Recent searches stored locally, with individual removal and clear history
+- Recent searches stored locally and shared between Search and Discover, with individual removal and clear history
 - Bounded, cancellable reads; refresh keeps visible posts and retries the failed operation
+- Actionable request diagnostics distinguish connection, session, rate-limit, endpoint, server, and X transaction-signing failures
 - Cached profiles and conversations remain readable during connection failures
 - Optional plugins: **Reddit**, **Substack**, Karakeep, Deepmarks
 - X Look theming (Light / Dim / Lights Out + accent)
@@ -44,7 +46,7 @@ XTA’s phone chrome is replaced with a layout closer to [Flare](https://github.
 - **Centered timeline** column (~640px) and a **reading pane** for opened threads
 - **Trends side panel** on wide windows
 - **Deck mode** — side-by-side columns for each home tab
-- Keyboard: `j`/`k` scroll the selected feed, `/` search, `Esc` close pane, `1`–`9` switch tabs, `Ctrl/Cmd+F` search loaded X posts when the feed has focus
+- Keyboard: `j`/`k` scroll the selected feed, `/` search, `Alt+←` / `Alt+→` move back/forward through reading-pane history, `Esc` close pane, `1`–`9` switch tabs, `Ctrl/Cmd+F` search loaded X posts when the feed has focus
 - Tab selection and scroll controllers follow tab identity when navigation is reordered
 - Visited deck columns stay mounted while scrolling horizontally; clicking a column selects it for keyboard scrolling
 - Right-click matches XTA’s long-press actions (save folder, translate thread, Reddit post menu)
@@ -100,6 +102,24 @@ Run in debug:
 ```bash
 flutter run -d linux
 ```
+
+### Arch Linux
+
+Qui's Linux bundle is relocatable and works well with a user-local install. Install the native build/runtime prerequisites with pacman:
+
+```bash
+sudo pacman -S --needed clang cmake ninja pkgconf gtk3 mpv python python-pip
+```
+
+Use the same pinned Flutter/FVM build steps above, then install the finished bundle for your user:
+
+```bash
+flutter build linux --release --no-tree-shake-icons
+bash scripts/install_linux_user.sh
+```
+
+The installer copies the bundle to `~/.local/lib/qui`, creates `~/.local/bin/qui`, and installs the desktop entry and icon under `${XDG_DATA_HOME:-~/.local/share}`. It does not require root. GTK handles both X11 and Wayland; on non-GNOME X11 window managers Qui keeps the traditional title bar used by the Linux runner.
+
 
 ## Verify changes
 
