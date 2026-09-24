@@ -1288,5 +1288,33 @@
   "reader_transaction_unavailable": "X-Anfragesignierung ist nicht verfügbar",
   "@reader_transaction_unavailable": {},
   "reader_transaction_unavailable_hint": "Qui konnte das Transaktions-Token, das X derzeit verlangt, nicht ableiten. Deine Konten können weiterhin in Ordnung sein; versuche es gleich noch einmal oder prüfe die Diagnose.",
-  "@reader_transaction_unavailable_hint": {}
+  "@reader_transaction_unavailable_hint": {},
+  "library_sort_newest": "Neueste zuerst",
+  "@library_sort_newest": {},
+  "library_sort_oldest": "Älteste zuerst",
+  "@library_sort_oldest": {},
+  "library_selected_count": "{count} ausgewählt",
+  "@library_selected_count": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "library_select_all": "Alle auswählen",
+  "@library_select_all": {},
+  "library_clear_selection": "Auswahl aufheben",
+  "@library_clear_selection": {},
+  "library_move_selected": "Ausgewählte verschieben",
+  "@library_move_selected": {},
+  "library_delete_selected_title": "Ausgewählte Beiträge löschen?",
+  "@library_delete_selected_title": {},
+  "library_delete_selected_description": "{count} ausgewählte gespeicherte Beiträge löschen? Dies kann nicht rückgängig gemacht werden.",
+  "@library_delete_selected_description": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }
