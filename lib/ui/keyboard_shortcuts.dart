@@ -20,6 +20,7 @@ bool shortcutTargetIsTextInput() {
 ///
 /// * `j` / `k` — next / previous post (scroll the current feed)
 /// * `/` — search
+/// * Alt+Left / Alt+Right — back / forward in the reading pane
 /// * `Escape` — close the reading pane
 /// * `1`–`9` — switch rail tabs
 /// * Ctrl/Cmd+, — settings
@@ -28,6 +29,8 @@ class DesktopKeyboardShortcuts extends StatelessWidget {
   final VoidCallback onSearch;
   final VoidCallback onSettings;
   final VoidCallback onClosePane;
+  final VoidCallback onBackPane;
+  final VoidCallback onForwardPane;
   final VoidCallback onScrollNext;
   final VoidCallback onScrollPrevious;
   final ValueChanged<int> onSelectTab;
@@ -38,6 +41,8 @@ class DesktopKeyboardShortcuts extends StatelessWidget {
     required this.onSearch,
     required this.onSettings,
     required this.onClosePane,
+    required this.onBackPane,
+    required this.onForwardPane,
     required this.onScrollNext,
     required this.onScrollPrevious,
     required this.onSelectTab,
@@ -58,6 +63,10 @@ class DesktopKeyboardShortcuts extends StatelessWidget {
             _unlessEditing(onScrollNext),
         const SingleActivator(LogicalKeyboardKey.keyK): () =>
             _unlessEditing(onScrollPrevious),
+        const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true): () =>
+            _unlessEditing(onBackPane),
+        const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true): () =>
+            _unlessEditing(onForwardPane),
         const SingleActivator(LogicalKeyboardKey.escape): onClosePane,
         const SingleActivator(LogicalKeyboardKey.comma, control: true):
             onSettings,
