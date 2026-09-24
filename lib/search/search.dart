@@ -13,6 +13,7 @@ import 'package:qui/tweet/_video.dart';
 import 'package:qui/tweet/paginated_tweet_list.dart';
 import 'package:qui/ui/errors.dart';
 import 'package:qui/ui/layout.dart';
+import 'package:qui/search/recent_searches_bar.dart';
 import 'package:qui/search/search_history.dart';
 import 'package:qui/user.dart';
 import 'package:pref/pref.dart';
@@ -135,31 +136,22 @@ class _ResultsScreenState extends State<_ResultsScreen> with SingleTickerProvide
     _focusNode.unfocus();
   }
 
-  Widget _recentSearches(BuildContext context) => ScopedBuilder<SearchHistory, List<String>>(
-    store: _history,
-    onState: (context, queries) => ListView(
-      children: [
-        ListTile(
-          title: Text(L10n.of(context).reader_recent_searches),
-          trailing: queries.isEmpty
-              ? null
-              : TextButton(onPressed: _history.clear, child: Text(L10n.of(context).reader_clear_searches)),
-        ),
-        if (queries.isEmpty)
-          Padding(padding: const EdgeInsets.all(16), child: Text(L10n.of(context).reader_search_hint)),
-        for (final query in queries)
-          ListTile(
-            leading: const Icon(Icons.history),
-            title: Text(query),
-            onTap: () => _submit(query),
-            trailing: IconButton(
-              icon: const Icon(Icons.close),
-              tooltip: L10n.of(context).delete,
-              onPressed: () => _history.remove(query),
+  Widget _recentSearches(BuildContext context) => Column(
+    children: [
+      RecentSearchesBar(store: _history, onSelected: _submit),
+      Expanded(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              L10n.of(context).reader_search_hint,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge,
             ),
           ),
-      ],
-    ),
+        ),
+      ),
+    ],
   );
 
   @override
