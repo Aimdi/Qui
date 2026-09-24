@@ -131,27 +131,32 @@ class HomeReadingControls extends StatelessWidget {
       return Semantics(
         selected: selected,
         button: true,
-        child: TextButton.icon(
-          key: key,
-          onPressed: selected ? null : onMediaToggle,
-          icon: Icon(icon, size: 19),
-          label: Text(label),
-          style: TextButton.styleFrom(
-            foregroundColor:
-                selected ? theme.colorScheme.onSurface : theme.hintColor,
-            disabledForegroundColor: theme.colorScheme.onSurface,
-            minimumSize: const Size(96, 44),
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            textStyle: TextStyle(
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            ),
-            shape: const RoundedRectangleBorder(),
-          ).copyWith(
-            side: WidgetStatePropertyAll(
-              BorderSide(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
                 color: selected ? accent : Colors.transparent,
-                width: selected ? 0 : 0,
+                width: 2.5,
               ),
+            ),
+          ),
+          child: TextButton.icon(
+            key: key,
+            onPressed: selected ? null : onMediaToggle,
+            icon: Icon(icon, size: 19),
+            label: Text(label),
+            style: TextButton.styleFrom(
+              foregroundColor:
+                  selected ? theme.colorScheme.onSurface : theme.hintColor,
+              disabledForegroundColor: theme.colorScheme.onSurface,
+              minimumSize: const Size(96, 45),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              textStyle: TextStyle(
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+              shape: const RoundedRectangleBorder(),
             ),
           ),
         ),
@@ -162,41 +167,24 @@ class HomeReadingControls extends StatelessWidget {
       color: theme.colorScheme.surface.withValues(alpha: 0.96),
       child: Container(
         height: 48,
+        alignment: AlignmentDirectional.centerStart,
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: divider)),
         ),
-        child: Stack(
-          alignment: Alignment.bottomCenter,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  mode(
-                    media: false,
-                    label: L10n.of(context).tweets,
-                    icon: Icons.view_stream_outlined,
-                    key: const ValueKey('home-posts-tab'),
-                  ),
-                  mode(
-                    media: true,
-                    label: L10n.of(context).media,
-                    icon: Icons.photo_library_outlined,
-                    key: const ValueKey('home-media-toggle'),
-                  ),
-                ],
-              ),
+            mode(
+              media: false,
+              label: L10n.of(context).tweets,
+              icon: Icons.view_stream_outlined,
+              key: const ValueKey('home-posts-tab'),
             ),
-            AnimatedAlign(
-              duration: const Duration(milliseconds: 160),
-              curve: Curves.easeOut,
-              alignment:
-                  mediaOnly ? AlignmentDirectional.bottomCenter : AlignmentDirectional.bottomStart,
-              child: FractionallySizedBox(
-                widthFactor: 0.5,
-                child: Container(height: 2.5, color: accent),
-              ),
+            mode(
+              media: true,
+              label: L10n.of(context).media,
+              icon: Icons.photo_library_outlined,
+              key: const ValueKey('home-media-toggle'),
             ),
           ],
         ),
