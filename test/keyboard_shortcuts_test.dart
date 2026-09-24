@@ -14,6 +14,8 @@ void main() {
           onSearch: () => searches++,
           onSettings: () {},
           onClosePane: () {},
+          onBackPane: () {},
+          onForwardPane: () {},
           onScrollNext: () {},
           onScrollPrevious: () {},
           onSelectTab: (_) {},
@@ -35,6 +37,8 @@ void main() {
           onSearch: () => searches++,
           onSettings: () {},
           onClosePane: () {},
+          onBackPane: () {},
+          onForwardPane: () {},
           onScrollNext: () {},
           onScrollPrevious: () {},
           onSelectTab: (_) {},
@@ -58,6 +62,8 @@ void main() {
           onSearch: () {},
           onSettings: () {},
           onClosePane: () => closed++,
+          onBackPane: () {},
+          onForwardPane: () {},
           onScrollNext: () {},
           onScrollPrevious: () {},
           onSelectTab: (_) {},
@@ -71,6 +77,40 @@ void main() {
     expect(closed, 1);
   });
 
+  testWidgets('Alt+Left and Alt+Right navigate reading history', (
+    tester,
+  ) async {
+    var back = 0;
+    var forward = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DesktopKeyboardShortcuts(
+          onSearch: () {},
+          onSettings: () {},
+          onClosePane: () {},
+          onBackPane: () => back++,
+          onForwardPane: () => forward++,
+          onScrollNext: () {},
+          onScrollPrevious: () {},
+          onSelectTab: (_) {},
+          child: const Scaffold(body: SizedBox.expand()),
+        ),
+      ),
+    );
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await tester.pump();
+    expect(back, 1);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await tester.pump();
+    expect(forward, 1);
+  });
+
   testWidgets('digit keys select rail tabs', (tester) async {
     var tab = -1;
     await tester.pumpWidget(
@@ -79,6 +119,8 @@ void main() {
           onSearch: () {},
           onSettings: () {},
           onClosePane: () {},
+          onBackPane: () {},
+          onForwardPane: () {},
           onScrollNext: () {},
           onScrollPrevious: () {},
           onSelectTab: (index) => tab = index,
@@ -102,6 +144,8 @@ void main() {
           onSearch: () {},
           onSettings: () {},
           onClosePane: () {},
+          onBackPane: () {},
+          onForwardPane: () {},
           onScrollNext: () => scrollFeedByStep(controller, direction: 1),
           onScrollPrevious: () => scrollFeedByStep(controller, direction: -1),
           onSelectTab: (_) {},
