@@ -1,4 +1,6 @@
+import 'package:qui/saved/saved_chrome.dart';
 import 'package:qui/saved/saved_post_content.dart';
+import 'package:qui/saved/saved_view_store.dart';
 import 'package:qui/status.dart';
 import 'package:qui/ui/detail_pane.dart';
 
@@ -45,6 +47,8 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
   bool _mediaOnly = false;
   bool _searching = false;
   String _query = '';
+  final SavedViewStore _view = SavedViewStore();
+  List<String> _visibleSavedIds = const [];
 
   /// Whether likes are broken out by the group their author belongs to.
   bool _likesByGroup = false;
@@ -90,6 +94,7 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
   void dispose() {
     _searchFocusNode.dispose();
     _searchController.dispose();
+    _view.destroy();
     super.dispose();
   }
 
@@ -174,7 +179,7 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
     );
   }
 
-  Widget _buildList({required int itemCount, required SavedTweetTile Function(int) tileAt}) {
+  Widget _buildList({required int itemCount, required Widget Function(int) tileAt}) {
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(top: 4),
@@ -323,6 +328,7 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
             shape: const StadiumBorder(),
             side: BorderSide.none,
             onSelected: (_) => setState(() {
+              _view.finishSelection();
               // A second tap on the likes chip toggles the breakdown; landing
               // on it for the first time always shows them flat.
               if (value == savedTabFavorites && _filter == savedTabFavorites) {
@@ -398,6 +404,113 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
     );
   }
 
+  void _handleLibraryAction(SavedLibraryAction action) {
+    setState(() {
+      switch (action) {
+        case SavedLibraryAction.sortNewest:
+          _view.setSort(SavedSort.newest);
+          break;
+        case SavedLibraryAction.sortOldest:
+          _view.setSort(SavedSort.oldest);
+          break;
+        case SavedLibraryAction.select:
+          _mediaOnly = false;
+          _view.beginSelection();
+          break;
+      }
+    });
+  }
+
+  Future<void> _moveSelected() async {
+    final ids = _view.state.selectedIds;
+    if (ids.isEmpty) return;
+
+    final folderModel = context.read<SavedTweetFolderModel>();
+    await folderModel.listFolders();
+    if (!mounted) return;
+
+    final destination = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(L10n.of(dialogContext).library_move_selected),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(dialogContext, ''),
+            child: Row(
+              children: [
+                const Icon(Icons.folder_off_outlined),
+                const SizedBox(width: 12),
+                Text(L10n.of(dialogContext).unfiled),
+              ],
+            ),
+          ),
+          for (final folder in folderModel.state)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(dialogContext, folder.id),
+              child: Row(
+                children: [
+                  const Icon(Icons.folder_outlined),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(folder.name)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+    if (destination == null || !mounted) return;
+
+    await context.read<SavedTweetModel>().setFolders(
+          ids,
+          destination.isEmpty ? null : destination,
+        );
+    if (!mounted) return;
+    setState(_view.finishSelection);
+  }
+
+  Future<void> _deleteSelected() async {
+    final ids = _view.state.selectedIds;
+    if (ids.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(L10n.of(dialogContext).library_delete_selected_title),
+        content: Text(
+          L10n.of(dialogContext).library_delete_selected_description(ids.length),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(L10n.of(dialogContext).cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(L10n.of(dialogContext).delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await context.read<SavedTweetModel>().removeSavedTweets(ids.toList());
+    if (!mounted) return;
+    setState(_view.finishSelection);
+  }
+
+  Widget _savedTile(SavedTweet saved) {
+    final child = SavedTweetTile(id: saved.id, content: saved.content);
+    final view = _view.state;
+    if (!view.selecting) return child;
+
+    return SavedSelectableTile(
+      id: saved.id,
+      selected: view.selectedIds.contains(saved.id),
+      onToggle: () => setState(() => _view.toggleSelected(saved.id)),
+      child: child,
+    );
+  }
+
   Widget _buildSavedBody(SavedTweetModel model) {
     return ScopedBuilder<SavedTweetModel, List<SavedTweet>>.transition(
       store: model,
@@ -409,7 +522,11 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
       ),
       onLoading: (_) => const Center(child: CircularProgressIndicator()),
       onState: (_, data) {
-        var filtered = _applySearch(_applyFilter(data), (SavedTweet e) => e.content);
+        var filtered = applySavedSort(
+          _applySearch(_applyFilter(data), (SavedTweet e) => e.content),
+          _view.state.sort,
+        );
+        _visibleSavedIds = filtered.map((e) => e.id).toList(growable: false);
 
         if (_mediaOnly && filtered.isNotEmpty) {
           return _buildMediaGrid(
@@ -424,7 +541,7 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
               ? _buildEmptyState()
               : _buildList(
                   itemCount: filtered.length,
-                  tileAt: (i) => SavedTweetTile(id: filtered[i].id, content: filtered[i].content),
+                  tileAt: (i) => _savedTile(filtered[i]),
                 ),
         );
       },
@@ -474,7 +591,11 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
       ),
       onLoading: (_) => const Center(child: CircularProgressIndicator()),
       onState: (_, data) {
-        var filtered = _applySearch(data, (LikedTweet e) => e.content);
+        var filtered = applySavedSort(
+          _applySearch(data, (LikedTweet e) => e.content),
+          _view.state.sort,
+        );
+        _visibleSavedIds = const [];
 
         if (_mediaOnly && filtered.isNotEmpty) {
           return _buildMediaGrid(
@@ -506,6 +627,10 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
     var model = context.read<SavedTweetModel>();
 
     var prefs = PrefService.of(context, listen: false);
+    final view = _view.state;
+    final allSelected =
+        _visibleSavedIds.isNotEmpty &&
+        _visibleSavedIds.every(view.selectedIds.contains);
 
     return NestedScrollView(
       controller: widget.scrollController,
@@ -517,8 +642,47 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
               pinned: useDesktopShell(context),
               snap: !useDesktopShell(context),
               floating: !useDesktopShell(context),
-              title: useDesktopShell(context) ? null : Text(L10n.current.saved),
-              actions: [
+              title: view.selecting
+                  ? Text(L10n.current.library_selected_count(view.selectedIds.length))
+                  : (useDesktopShell(context) ? null : Text(L10n.current.saved)),
+              actions: view.selecting
+                  ? [
+                      IconButton(
+                        tooltip: L10n.current.close,
+                        icon: const Icon(Icons.close),
+                        onPressed: () => setState(_view.finishSelection),
+                      ),
+                      IconButton(
+                        key: const ValueKey('saved-select-all'),
+                        tooltip: allSelected
+                            ? L10n.current.library_clear_selection
+                            : L10n.current.library_select_all,
+                        icon: Icon(allSelected ? Icons.deselect : Icons.select_all),
+                        onPressed: () => setState(
+                          () => _view.selectVisible(
+                            allSelected ? const <String>[] : _visibleSavedIds,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        key: const ValueKey('saved-move-selected'),
+                        tooltip: L10n.current.library_move_selected,
+                        icon: const Icon(Icons.drive_file_move_outline),
+                        onPressed: view.selectedIds.isEmpty ? null : _moveSelected,
+                      ),
+                      IconButton(
+                        key: const ValueKey('saved-delete-selected'),
+                        tooltip: L10n.current.delete,
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: view.selectedIds.isEmpty ? null : _deleteSelected,
+                      ),
+                    ]
+                  : [
+                      SavedLibraryActionButton(
+                        sort: view.sort,
+                        canSelect: _filter != savedTabFavorites,
+                        onSelected: _handleLibraryAction,
+                      ),
                 IconButton(
                   isSelected: _searching,
                   icon: const Icon(Icons.search),
@@ -567,7 +731,7 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
                       Navigator.pushNamed(context, routeSettings);
                     },
                   ),
-              ],
+                    ],
             ),
         ];
       },
