@@ -12,28 +12,38 @@ import 'package:qui/ui/layout.dart';
 /// replies/quoted posts inside the pane and step back out again.
 class DetailPaneController extends ChangeNotifier {
   final List<StatusScreenArguments> _stack = [];
+  final List<StatusScreenArguments> _forward = [];
 
   StatusScreenArguments? get current => _stack.isEmpty ? null : _stack.last;
   bool get hasSelection => _stack.isNotEmpty;
   bool get canGoBack => _stack.length > 1;
+  bool get canGoForward => _forward.isNotEmpty;
 
   void open(StatusScreenArguments args) {
     // Re-tapping the post that's already on top is a no-op; it would otherwise
     // stack a duplicate and turn the close button into a pointless "back".
     if (_stack.isNotEmpty && _stack.last.id == args.id) return;
+    _forward.clear();
     _stack.add(args);
     notifyListeners();
   }
 
   void back() {
     if (_stack.length <= 1) return;
-    _stack.removeLast();
+    _forward.add(_stack.removeLast());
+    notifyListeners();
+  }
+
+  void forward() {
+    if (_forward.isEmpty) return;
+    _stack.add(_forward.removeLast());
     notifyListeners();
   }
 
   void close() {
     if (_stack.isEmpty) return;
     _stack.clear();
+    _forward.clear();
     notifyListeners();
   }
 }
