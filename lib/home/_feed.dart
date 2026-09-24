@@ -18,7 +18,7 @@ enum FeedTab { following, foryou, reddit }
 IconData feedTabIcon(FeedTab tab) => switch (tab) {
   FeedTab.following => Icons.home_outlined,
   FeedTab.foryou => Icons.auto_awesome_outlined,
-  FeedTab.reddit => Icons.reddit_outlined,
+  FeedTab.reddit => Icons.forum_outlined,
 };
 
 class FeedTabOption {
