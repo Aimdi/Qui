@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qui/catcher/exceptions.dart';
 import 'package:qui/client/headers.dart';
 import 'package:qui/client/x_client_transaction_id/client_transaction.dart';
 import 'package:qui/constants.dart';
@@ -83,7 +84,10 @@ void main() {
         return fakeTransaction();
       };
 
-      await expectLater(TwitterHeaders.getXClientTransactionIdHeader(uri), throwsA(isA<Exception>()));
+      await expectLater(
+        TwitterHeaders.getXClientTransactionIdHeader(uri),
+        throwsA(isA<TransactionIdUnavailableException>()),
+      );
       now = now.add(transactionKeyRetryCooldown + const Duration(seconds: 1));
 
       final header = await TwitterHeaders.getXClientTransactionIdHeader(uri);
