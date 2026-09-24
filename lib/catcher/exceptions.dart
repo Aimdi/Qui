@@ -49,6 +49,23 @@ class NoWorkingAccountException with SyntheticException implements Exception {
 /// accounts in that case tells the reader to re-add accounts that were never
 /// the problem, so an endpoint that refuses everyone is reported as its own
 /// failure instead.
+/// Qui could not derive the x-client-transaction-id that X currently
+/// requires on GraphQL reads.
+///
+/// This is deliberately distinct from an endpoint/query-id refusal: both can
+/// produce similar failures at X, but repairing them requires different
+/// machinery.
+class TransactionIdUnavailableException
+    with SyntheticException
+    implements Exception {
+  final Object cause;
+
+  TransactionIdUnavailableException(this.cause);
+
+  @override
+  String toString() => 'X transaction id unavailable';
+}
+
 class EndpointRefusedException with SyntheticException implements Exception {
   final String endpoint;
 
