@@ -10,6 +10,7 @@ void main() {
     expect(c.hasSelection, isFalse);
     expect(c.current, isNull);
     expect(c.canGoBack, isFalse);
+    expect(c.canGoForward, isFalse);
 
     c.open(args('1'));
     expect(c.hasSelection, isTrue);
@@ -23,13 +24,33 @@ void main() {
     c.back();
     expect(c.current!.id, '1');
     expect(c.canGoBack, isFalse);
+    expect(c.canGoForward, isTrue);
 
+    c.forward();
+    expect(c.current!.id, '2');
+    expect(c.canGoBack, isTrue);
+    expect(c.canGoForward, isFalse);
+
+    c.back();
     c.back(); // already at the root — stays put
     expect(c.current!.id, '1');
 
     c.close();
     expect(c.hasSelection, isFalse);
     expect(c.current, isNull);
+  });
+
+  test('opening a new post after Back clears forward history', () {
+    final c = DetailPaneController();
+    c.open(args('1'));
+    c.open(args('2'));
+    c.back();
+
+    expect(c.canGoForward, isTrue);
+    c.open(args('3'));
+
+    expect(c.current!.id, '3');
+    expect(c.canGoForward, isFalse);
   });
 
   test('re-opening the post already on top does not stack a duplicate', () {
