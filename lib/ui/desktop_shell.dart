@@ -200,6 +200,8 @@ class _QuiShellState extends State<QuiShell> {
         onSearch: _openSearch,
         onSettings: _openSettings,
         onClosePane: _detailPaneController.close,
+        onBackPane: _detailPaneController.back,
+        onForwardPane: _detailPaneController.forward,
         onScrollNext: () => scrollFeedByStep(_scrollControllers[_currentPage], direction: 1),
         onScrollPrevious: () => scrollFeedByStep(_scrollControllers[_currentPage], direction: -1),
         onSelectTab: (index) {
