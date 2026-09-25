@@ -1,8 +1,9 @@
 # XTA reader improvements for Qui
 
-Compared Qui `89217ec9bdfdcf757f1e3d02a80f9754b456c840` with XTA
-`41208aed8f463cbc25b204504baba8dcc6c74110` (the `claude/main` head inspected
-for this change).
+The initial reader-recovery port compared Qui
+`89217ec9bdfdcf757f1e3d02a80f9754b456c840` with XTA
+`41208aed8f463cbc25b204504baba8dcc6c74110`. The completed branch was checked
+again against XTA `1d1ca2100979e888153858c3c0f42d9138ba2cbf` on 2026-09-25.
 
 ## Adapted capabilities
 
@@ -23,27 +24,41 @@ for this change).
 - Desktop search has labelled tabs, immediate Enter submission, working initial
   focus and clear controls. People lookup runs only when its tab is selected;
   stale results cannot overwrite a later query. Explicitly submitted searches
-  are kept locally (at most 20), removable and clearable.
+  are kept locally (at most 20), removable and clearable. X Search and Discover
+  use the same recent-search controls and clearing behavior.
 - Saved-post search supports multiple terms across the post, author and links.
   Invalid bookmark payloads are isolated, with an action to reopen the original.
+  The Saved library also supports newest/oldest sorting, bulk selection and
+  moving several posts to a folder at once.
 - Enabled readers can be opened from the plugin store with their home tab hidden;
   reader settings and Back navigation remain available.
+- Home uses a compact desktop source menu and XTA-style Posts / Media controls
+  without replacing Qui's rail, deck or reading-pane layout.
+- Profiles retain their nested scroll position and Saved-tab state across tab
+  switches.
 - Desktop navigation keeps the selected tab and its controllers by stable ID.
   Deck columns preserve mounted state while off screen and gain pointer/focus
-  selection so keyboard scrolling follows the chosen column.
+  selection so keyboard scrolling follows the chosen column. The reading pane
+  keeps back/forward history, available from its controls and Alt+Left/Right.
+- Arch and other Linux desktops can install the release bundle for the current
+  user through `scripts/install_linux_user.sh`, including a desktop entry.
 
 ## Desktop boundaries
 
 Qui retains its desktop shell, cookie login, media_kit player, file picker,
-SQLite integration and existing plugins. No new networks are introduced.
-Neither the manifest/lockfile nor `lib/client/` or `lib/database/` is changed.
+SQLite integration and existing plugins. No new networks are introduced. The
+manifest, lockfile and database are unchanged. The only client-layer change is
+the typed transaction-signing failure used by the shared reader error UI; no X
+endpoint, account-selection or transport behavior is changed.
 The profile cache and recent-search history are optional local sidecar files
 under the application support directory; they are separate from backup exports.
 
-This is a reader upgrade, not complete XTA parity. XTA’s Android integrations,
+This is a reader upgrade, not complete XTA parity. XTA's Android integrations,
 multi-network archive/notes, additional plugins and mobile navigation are not
-copied into Qui. Native Windows/macOS and authenticated live-service behavior
-need testing on those hosts/accounts.
+copied into Qui. XTA's newest in-app rich-card reader, unified media viewer for
+networks Qui does not ship, and expanded stale-cache diagnostics remain follow-up
+work. Native Windows/macOS and authenticated live-service behavior need testing
+on those hosts/accounts.
 
 ## Validation
 
