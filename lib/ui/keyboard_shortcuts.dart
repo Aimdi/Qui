@@ -57,45 +57,25 @@ class DesktopKeyboardShortcuts extends StatelessWidget {
   Widget build(BuildContext context) {
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.slash): () =>
-            _unlessEditing(onSearch),
-        const SingleActivator(LogicalKeyboardKey.keyJ): () =>
-            _unlessEditing(onScrollNext),
-        const SingleActivator(LogicalKeyboardKey.keyK): () =>
-            _unlessEditing(onScrollPrevious),
-        const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true): () =>
-            _unlessEditing(onBackPane),
-        const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true): () =>
-            _unlessEditing(onForwardPane),
+        const SingleActivator(LogicalKeyboardKey.slash): () => _unlessEditing(onSearch),
+        const SingleActivator(LogicalKeyboardKey.keyJ): () => _unlessEditing(onScrollNext),
+        const SingleActivator(LogicalKeyboardKey.keyK): () => _unlessEditing(onScrollPrevious),
+        const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true): () => _unlessEditing(onBackPane),
+        const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true): () => _unlessEditing(onForwardPane),
         const SingleActivator(LogicalKeyboardKey.escape): onClosePane,
-        const SingleActivator(LogicalKeyboardKey.comma, control: true):
-            onSettings,
+        const SingleActivator(LogicalKeyboardKey.comma, control: true): onSettings,
         const SingleActivator(LogicalKeyboardKey.comma, meta: true): onSettings,
-        const SingleActivator(LogicalKeyboardKey.digit1): () =>
-            _unlessEditing(() => onSelectTab(0)),
-        const SingleActivator(LogicalKeyboardKey.digit2): () =>
-            _unlessEditing(() => onSelectTab(1)),
-        const SingleActivator(LogicalKeyboardKey.digit3): () =>
-            _unlessEditing(() => onSelectTab(2)),
-        const SingleActivator(LogicalKeyboardKey.digit4): () =>
-            _unlessEditing(() => onSelectTab(3)),
-        const SingleActivator(LogicalKeyboardKey.digit5): () =>
-            _unlessEditing(() => onSelectTab(4)),
-        const SingleActivator(LogicalKeyboardKey.digit6): () =>
-            _unlessEditing(() => onSelectTab(5)),
-        const SingleActivator(LogicalKeyboardKey.digit7): () =>
-            _unlessEditing(() => onSelectTab(6)),
-        const SingleActivator(LogicalKeyboardKey.digit8): () =>
-            _unlessEditing(() => onSelectTab(7)),
-        const SingleActivator(LogicalKeyboardKey.digit9): () =>
-            _unlessEditing(() => onSelectTab(8)),
+        const SingleActivator(LogicalKeyboardKey.digit1): () => _unlessEditing(() => onSelectTab(0)),
+        const SingleActivator(LogicalKeyboardKey.digit2): () => _unlessEditing(() => onSelectTab(1)),
+        const SingleActivator(LogicalKeyboardKey.digit3): () => _unlessEditing(() => onSelectTab(2)),
+        const SingleActivator(LogicalKeyboardKey.digit4): () => _unlessEditing(() => onSelectTab(3)),
+        const SingleActivator(LogicalKeyboardKey.digit5): () => _unlessEditing(() => onSelectTab(4)),
+        const SingleActivator(LogicalKeyboardKey.digit6): () => _unlessEditing(() => onSelectTab(5)),
+        const SingleActivator(LogicalKeyboardKey.digit7): () => _unlessEditing(() => onSelectTab(6)),
+        const SingleActivator(LogicalKeyboardKey.digit8): () => _unlessEditing(() => onSelectTab(7)),
+        const SingleActivator(LogicalKeyboardKey.digit9): () => _unlessEditing(() => onSelectTab(8)),
       },
-      child: Focus(
-        autofocus: true,
-        canRequestFocus: true,
-        skipTraversal: true,
-        child: child,
-      ),
+      child: Focus(autofocus: true, canRequestFocus: true, skipTraversal: true, child: child),
     );
   }
 }
@@ -108,9 +88,5 @@ void scrollFeedByStep(ScrollController? controller, {required int direction}) {
     position.minScrollExtent,
     position.maxScrollExtent,
   );
-  controller.animateTo(
-    target,
-    duration: const Duration(milliseconds: 180),
-    curve: Curves.easeOutCubic,
-  );
+  controller.animateTo(target, duration: const Duration(milliseconds: 180), curve: Curves.easeOutCubic);
 }

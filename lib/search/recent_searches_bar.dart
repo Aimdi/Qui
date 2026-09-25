@@ -7,11 +7,7 @@ class RecentSearchesBar extends StatelessWidget {
   final SearchHistory store;
   final ValueChanged<String> onSelected;
 
-  const RecentSearchesBar({
-    super.key,
-    required this.store,
-    required this.onSelected,
-  });
+  const RecentSearchesBar({super.key, required this.store, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {

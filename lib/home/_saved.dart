@@ -460,10 +460,7 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
     );
     if (destination == null || !mounted) return;
 
-    await context.read<SavedTweetModel>().setFolders(
-          ids,
-          destination.isEmpty ? null : destination,
-        );
+    await context.read<SavedTweetModel>().setFolders(ids, destination.isEmpty ? null : destination);
     if (!mounted) return;
     setState(_view.finishSelection);
   }
@@ -476,18 +473,10 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(L10n.of(dialogContext).library_delete_selected_title),
-        content: Text(
-          L10n.of(dialogContext).library_delete_selected_description(ids.length),
-        ),
+        content: Text(L10n.of(dialogContext).library_delete_selected_description(ids.length)),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(L10n.of(dialogContext).cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(L10n.of(dialogContext).delete),
-          ),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text(L10n.of(dialogContext).cancel)),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: Text(L10n.of(dialogContext).delete)),
         ],
       ),
     );
@@ -522,10 +511,7 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
       ),
       onLoading: (_) => const Center(child: CircularProgressIndicator()),
       onState: (_, data) {
-        var filtered = applySavedSort(
-          _applySearch(_applyFilter(data), (SavedTweet e) => e.content),
-          _view.state.sort,
-        );
+        var filtered = applySavedSort(_applySearch(_applyFilter(data), (SavedTweet e) => e.content), _view.state.sort);
         _visibleSavedIds = filtered.map((e) => e.id).toList(growable: false);
 
         if (_mediaOnly && filtered.isNotEmpty) {
@@ -539,10 +525,7 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
           onRefresh: _refresh,
           child: filtered.isEmpty
               ? _buildEmptyState()
-              : _buildList(
-                  itemCount: filtered.length,
-                  tileAt: (i) => _savedTile(filtered[i]),
-                ),
+              : _buildList(itemCount: filtered.length, tileAt: (i) => _savedTile(filtered[i])),
         );
       },
     );
@@ -591,10 +574,7 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
       ),
       onLoading: (_) => const Center(child: CircularProgressIndicator()),
       onState: (_, data) {
-        var filtered = applySavedSort(
-          _applySearch(data, (LikedTweet e) => e.content),
-          _view.state.sort,
-        );
+        var filtered = applySavedSort(_applySearch(data, (LikedTweet e) => e.content), _view.state.sort);
         _visibleSavedIds = const [];
 
         if (_mediaOnly && filtered.isNotEmpty) {
@@ -628,9 +608,7 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
 
     var prefs = PrefService.of(context, listen: false);
     final view = _view.state;
-    final allSelected =
-        _visibleSavedIds.isNotEmpty &&
-        _visibleSavedIds.every(view.selectedIds.contains);
+    final allSelected = _visibleSavedIds.isNotEmpty && _visibleSavedIds.every(view.selectedIds.contains);
 
     return NestedScrollView(
       controller: widget.scrollController,
@@ -654,15 +632,10 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
                       ),
                       IconButton(
                         key: const ValueKey('saved-select-all'),
-                        tooltip: allSelected
-                            ? L10n.current.library_clear_selection
-                            : L10n.current.library_select_all,
+                        tooltip: allSelected ? L10n.current.library_clear_selection : L10n.current.library_select_all,
                         icon: Icon(allSelected ? Icons.deselect : Icons.select_all),
-                        onPressed: () => setState(
-                          () => _view.selectVisible(
-                            allSelected ? const <String>[] : _visibleSavedIds,
-                          ),
-                        ),
+                        onPressed: () =>
+                            setState(() => _view.selectVisible(allSelected ? const <String>[] : _visibleSavedIds)),
                       ),
                       IconButton(
                         key: const ValueKey('saved-move-selected'),
@@ -683,54 +656,54 @@ class _SavedScreenState extends State<SavedScreen> with AutomaticKeepAliveClient
                         canSelect: _filter != savedTabFavorites,
                         onSelected: _handleLibraryAction,
                       ),
-                IconButton(
-                  isSelected: _searching,
-                  icon: const Icon(Icons.search),
-                  tooltip: L10n.current.search_saved_posts,
-                  onPressed: () => setState(() {
-                    _searching = !_searching;
-                    if (_searching) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) => _searchFocusNode.requestFocus());
-                    } else {
-                      _query = '';
-                      _searchController.clear();
-                      _searchFocusNode.unfocus();
-                    }
-                  }),
-                ),
-                IconButton(
-                  isSelected: _mediaOnly,
-                  icon: const Icon(Icons.photo_library_outlined),
-                  selectedIcon: const Icon(Icons.photo_library),
-                  tooltip: L10n.current.only_show_posts_with_media,
-                  onPressed: () => setState(() => _mediaOnly = !_mediaOnly),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.folder_copy_outlined),
-                  tooltip: L10n.current.manage_folders,
-                  onPressed: () async {
-                    await Navigator.pushNamed(context, routeSavedFolders);
-                    if (mounted) {
-                      setState(() {});
-                    }
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  tooltip: L10n.current.find_broken_bookmarks,
-                  onPressed: () => showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) => const BrokenBookmarksDialog(),
-                  ),
-                ),
-                if (!useDesktopShell(context))
-                  IconButton(
-                    icon: const Icon(Icons.settings),
-                    onPressed: () async {
-                      Navigator.pushNamed(context, routeSettings);
-                    },
-                  ),
+                      IconButton(
+                        isSelected: _searching,
+                        icon: const Icon(Icons.search),
+                        tooltip: L10n.current.search_saved_posts,
+                        onPressed: () => setState(() {
+                          _searching = !_searching;
+                          if (_searching) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) => _searchFocusNode.requestFocus());
+                          } else {
+                            _query = '';
+                            _searchController.clear();
+                            _searchFocusNode.unfocus();
+                          }
+                        }),
+                      ),
+                      IconButton(
+                        isSelected: _mediaOnly,
+                        icon: const Icon(Icons.photo_library_outlined),
+                        selectedIcon: const Icon(Icons.photo_library),
+                        tooltip: L10n.current.only_show_posts_with_media,
+                        onPressed: () => setState(() => _mediaOnly = !_mediaOnly),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.folder_copy_outlined),
+                        tooltip: L10n.current.manage_folders,
+                        onPressed: () async {
+                          await Navigator.pushNamed(context, routeSavedFolders);
+                          if (mounted) {
+                            setState(() {});
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: L10n.current.find_broken_bookmarks,
+                        onPressed: () => showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const BrokenBookmarksDialog(),
+                        ),
+                      ),
+                      if (!useDesktopShell(context))
+                        IconButton(
+                          icon: const Icon(Icons.settings),
+                          onPressed: () async {
+                            Navigator.pushNamed(context, routeSettings);
+                          },
+                        ),
                     ],
             ),
         ];

@@ -207,11 +207,7 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
     final int initialTabIdx = widget.defaultTabIndex ?? profileTabs.indexWhere((e) => e.id == defaultProfileTab);
 
     final safeIndex = initialTabIdx.clamp(0, profileTabs.length - 1).toInt();
-    _tabController = TabController(
-      length: profileTabs.length,
-      vsync: this,
-      initialIndex: safeIndex,
-    );
+    _tabController = TabController(length: profileTabs.length, vsync: this, initialIndex: safeIndex);
     _tabController.addListener(_handleTabChanged);
   }
 
@@ -232,10 +228,10 @@ class _ProfileScreenBodyState extends State<ProfileScreenBody> with TickerProvid
     final state = nestedScrollViewKey.currentState;
     if (state == null) return;
 
-    final innerScrolled = state.innerController.hasClients &&
-        state.innerController.positions.any((position) => position.pixels >= 400);
-    final outerScrolled = state.outerController.hasClients &&
-        state.outerController.positions.any((position) => position.pixels >= 400);
+    final innerScrolled =
+        state.innerController.hasClients && state.innerController.positions.any((position) => position.pixels >= 400);
+    final outerScrolled =
+        state.outerController.hasClients && state.outerController.positions.any((position) => position.pixels >= 400);
     final show = innerScrolled || outerScrolled;
 
     if (show != _showBackToTopButton && mounted) {

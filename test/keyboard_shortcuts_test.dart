@@ -4,9 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qui/ui/keyboard_shortcuts.dart';
 
 void main() {
-  testWidgets('slash opens search unless a text field is focused', (
-    tester,
-  ) async {
+  testWidgets('slash opens search unless a text field is focused', (tester) async {
     var searches = 0;
     await tester.pumpWidget(
       MaterialApp(
@@ -77,9 +75,7 @@ void main() {
     expect(closed, 1);
   });
 
-  testWidgets('Alt+Left and Alt+Right navigate reading history', (
-    tester,
-  ) async {
+  testWidgets('Alt+Left and Alt+Right navigate reading history', (tester) async {
     var back = 0;
     var forward = 0;
     await tester.pumpWidget(
@@ -152,10 +148,7 @@ void main() {
           child: Scaffold(
             body: ListView(
               controller: controller,
-              children: List.generate(
-                40,
-                (i) => SizedBox(height: 100, child: Text('item $i')),
-              ),
+              children: List.generate(40, (i) => SizedBox(height: 100, child: Text('item $i'))),
             ),
           ),
         ),

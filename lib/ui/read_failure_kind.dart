@@ -28,8 +28,7 @@ ReadFailureKind readFailureKind(Object? error) {
   if (error is SocketException || error is http.ClientException) {
     return ReadFailureKind.connection;
   }
-  if (error is RateLimitedException ||
-      (error is HttpException && error.statusCode == 429)) {
+  if (error is RateLimitedException || (error is HttpException && error.statusCode == 429)) {
     return ReadFailureKind.rateLimited;
   }
   if (error is NoAccountAvailableException ||
@@ -44,8 +43,7 @@ ReadFailureKind readFailureKind(Object? error) {
   if (error is TransactionIdUnavailableException) {
     return ReadFailureKind.transactionUnavailable;
   }
-  if (error is HttpException &&
-      const [500, 502, 503, 504].contains(error.statusCode)) {
+  if (error is HttpException && const [500, 502, 503, 504].contains(error.statusCode)) {
     return ReadFailureKind.serviceUnavailable;
   }
   if (error is HttpException && const [403, 404].contains(error.statusCode)) {
@@ -58,9 +56,7 @@ ReadFailureKind readFailureKind(Object? error) {
 /// hammering a rate-limited endpoint or a broken session.
 Object? recoverableReadFailure(Object? error) {
   return switch (readFailureKind(error)) {
-    ReadFailureKind.connection ||
-    ReadFailureKind.timedOut ||
-    ReadFailureKind.serviceUnavailable => error,
+    ReadFailureKind.connection || ReadFailureKind.timedOut || ReadFailureKind.serviceUnavailable => error,
     _ => null,
   };
 }

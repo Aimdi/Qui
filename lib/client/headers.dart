@@ -102,10 +102,7 @@ class TwitterHeaders {
     } on TimeoutException {
       rethrow;
     } catch (error, stack) {
-      Error.throwWithStackTrace(
-        TransactionIdUnavailableException(error),
-        stack,
-      );
+      Error.throwWithStackTrace(TransactionIdUnavailableException(error), stack);
     }
   }
 

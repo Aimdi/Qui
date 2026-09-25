@@ -15,18 +15,13 @@ class TrendsScreen extends StatefulWidget {
   final ScrollController scrollController;
   final FocusNode focusNode;
 
-  const TrendsScreen({
-    super.key,
-    required this.scrollController,
-    required this.focusNode,
-  });
+  const TrendsScreen({super.key, required this.scrollController, required this.focusNode});
 
   @override
   State<TrendsScreen> createState() => _TrendsScreenState();
 }
 
-class _TrendsScreenState extends State<TrendsScreen>
-    with AutomaticKeepAliveClientMixin<TrendsScreen> {
+class _TrendsScreenState extends State<TrendsScreen> with AutomaticKeepAliveClientMixin<TrendsScreen> {
   @override
   bool get wantKeepAlive => true;
   final TextEditingController _queryController = TextEditingController();
@@ -46,11 +41,7 @@ class _TrendsScreenState extends State<TrendsScreen>
     await Navigator.pushNamed(
       context,
       routeSearch,
-      arguments: SearchArguments(
-        0,
-        focusInputOnOpen: false,
-        query: query,
-      ),
+      arguments: SearchArguments(0, focusInputOnOpen: false, query: query),
     );
   }
 
@@ -110,10 +101,7 @@ class _TrendsScreenState extends State<TrendsScreen>
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
-        onPressed: () async => showAdaptiveSheet(
-          context: context,
-          builder: (context) => const TrendsSettings(),
-        ),
+        onPressed: () async => showAdaptiveSheet(context: context, builder: (context) => const TrendsSettings()),
       ),
       body: Column(
         children: [

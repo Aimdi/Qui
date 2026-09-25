@@ -9,12 +9,7 @@ class SavedLibraryActionButton extends StatelessWidget {
   final bool canSelect;
   final ValueChanged<SavedLibraryAction> onSelected;
 
-  const SavedLibraryActionButton({
-    super.key,
-    required this.sort,
-    required this.canSelect,
-    required this.onSelected,
-  });
+  const SavedLibraryActionButton({super.key, required this.sort, required this.canSelect, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -40,11 +35,7 @@ class SavedLibraryActionButton extends StatelessWidget {
           PopupMenuItem(
             value: SavedLibraryAction.select,
             child: Row(
-              children: [
-                const Icon(Icons.checklist_outlined, size: 20),
-                const SizedBox(width: 10),
-                Text(l10n.select),
-              ],
+              children: [const Icon(Icons.checklist_outlined, size: 20), const SizedBox(width: 10), Text(l10n.select)],
             ),
           ),
       ],
@@ -69,9 +60,7 @@ class SavedSelectableTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected
-          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.08)
-          : Colors.transparent,
+      color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.08) : Colors.transparent,
       child: InkWell(
         key: ValueKey('saved-select-$id'),
         onTap: onToggle,
@@ -83,10 +72,7 @@ class SavedSelectableTile extends StatelessWidget {
               end: 12,
               child: Semantics(
                 checked: selected,
-                child: Checkbox(
-                  value: selected,
-                  onChanged: (_) => onToggle(),
-                ),
+                child: Checkbox(value: selected, onChanged: (_) => onToggle()),
               ),
             ),
           ],

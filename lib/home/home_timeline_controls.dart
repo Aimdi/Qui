@@ -8,11 +8,7 @@ class HomeSourceOption<T> {
   final String label;
   final IconData icon;
 
-  const HomeSourceOption({
-    required this.value,
-    required this.label,
-    required this.icon,
-  });
+  const HomeSourceOption({required this.value, required this.label, required this.icon});
 }
 
 /// Compact Home source selector.
@@ -26,19 +22,11 @@ class HomeSourceSwitcher<T> extends StatelessWidget {
   final List<HomeSourceOption<T>> options;
   final ValueChanged<T> onSelected;
 
-  const HomeSourceSwitcher({
-    super.key,
-    required this.selected,
-    required this.options,
-    required this.onSelected,
-  });
+  const HomeSourceSwitcher({super.key, required this.selected, required this.options, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
-    final selectedOption = options.firstWhere(
-      (option) => option.value == selected,
-      orElse: () => options.first,
-    );
+    final selectedOption = options.firstWhere((option) => option.value == selected, orElse: () => options.first);
     final desktop = useDesktopShell(context);
 
     return PopupMenuButton<T>(
@@ -55,10 +43,7 @@ class HomeSourceSwitcher<T> extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(child: Text(option.label)),
                 if (option.value == selected)
-                  const Padding(
-                    padding: EdgeInsetsDirectional.only(start: 12),
-                    child: Icon(Icons.check, size: 18),
-                  ),
+                  const Padding(padding: EdgeInsetsDirectional.only(start: 12), child: Icon(Icons.check, size: 18)),
               ],
             ),
           ),
@@ -69,12 +54,7 @@ class HomeSourceSwitcher<T> extends StatelessWidget {
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: desktop ? 260 : 210),
           child: Padding(
-            padding: EdgeInsetsDirectional.only(
-              start: desktop ? 4 : 0,
-              end: 4,
-              top: 6,
-              bottom: 6,
-            ),
+            padding: EdgeInsetsDirectional.only(start: desktop ? 4 : 0, end: 4, top: 6, bottom: 6),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -85,9 +65,7 @@ class HomeSourceSwitcher<T> extends StatelessWidget {
                     selectedOption.label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -109,11 +87,7 @@ class HomeReadingControls extends StatelessWidget {
   final bool mediaOnly;
   final VoidCallback onMediaToggle;
 
-  const HomeReadingControls({
-    super.key,
-    required this.mediaOnly,
-    required this.onMediaToggle,
-  });
+  const HomeReadingControls({super.key, required this.mediaOnly, required this.onMediaToggle});
 
   @override
   Widget build(BuildContext context) {
@@ -121,12 +95,7 @@ class HomeReadingControls extends StatelessWidget {
     final accent = theme.colorScheme.primary;
     final divider = theme.dividerColor.withValues(alpha: 0.55);
 
-    Widget mode({
-      required bool media,
-      required String label,
-      required IconData icon,
-      required Key key,
-    }) {
+    Widget mode({required bool media, required String label, required IconData icon, required Key key}) {
       final selected = mediaOnly == media;
       return Semantics(
         selected: selected,
@@ -135,12 +104,7 @@ class HomeReadingControls extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: selected ? accent : Colors.transparent,
-                width: 2.5,
-              ),
-            ),
+            border: Border(bottom: BorderSide(color: selected ? accent : Colors.transparent, width: 2.5)),
           ),
           child: TextButton.icon(
             key: key,
@@ -148,14 +112,11 @@ class HomeReadingControls extends StatelessWidget {
             icon: Icon(icon, size: 19),
             label: Text(label),
             style: TextButton.styleFrom(
-              foregroundColor:
-                  selected ? theme.colorScheme.onSurface : theme.hintColor,
+              foregroundColor: selected ? theme.colorScheme.onSurface : theme.hintColor,
               disabledForegroundColor: theme.colorScheme.onSurface,
               minimumSize: const Size(96, 45),
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              textStyle: TextStyle(
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              ),
+              textStyle: TextStyle(fontWeight: selected ? FontWeight.w700 : FontWeight.w500),
               shape: const RoundedRectangleBorder(),
             ),
           ),

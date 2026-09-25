@@ -5,9 +5,7 @@ enum SavedSort { newest, oldest }
 
 List<T> applySavedSort<T>(Iterable<T> items, SavedSort sort) {
   final list = items.toList(growable: false);
-  return sort == SavedSort.oldest
-      ? list.reversed.toList(growable: false)
-      : list;
+  return sort == SavedSort.oldest ? list.reversed.toList(growable: false) : list;
 }
 
 @immutable
@@ -16,17 +14,9 @@ class SavedViewState {
   final bool selecting;
   final Set<String> selectedIds;
 
-  const SavedViewState({
-    this.sort = SavedSort.newest,
-    this.selecting = false,
-    this.selectedIds = const <String>{},
-  });
+  const SavedViewState({this.sort = SavedSort.newest, this.selecting = false, this.selectedIds = const <String>{}});
 
-  SavedViewState copyWith({
-    SavedSort? sort,
-    bool? selecting,
-    Set<String>? selectedIds,
-  }) {
+  SavedViewState copyWith({SavedSort? sort, bool? selecting, Set<String>? selectedIds}) {
     return SavedViewState(
       sort: sort ?? this.sort,
       selecting: selecting ?? this.selecting,
@@ -43,40 +33,20 @@ class SavedViewStore extends Store<SavedViewState> {
   void beginSelection([String? id]) {
     final selected = <String>{...state.selectedIds};
     if (id != null) selected.add(id);
-    update(
-      state.copyWith(
-        selecting: true,
-        selectedIds: Set.unmodifiable(selected),
-      ),
-    );
+    update(state.copyWith(selecting: true, selectedIds: Set.unmodifiable(selected)));
   }
 
   void toggleSelected(String id) {
     final selected = <String>{...state.selectedIds};
     selected.contains(id) ? selected.remove(id) : selected.add(id);
-    update(
-      state.copyWith(
-        selecting: true,
-        selectedIds: Set.unmodifiable(selected),
-      ),
-    );
+    update(state.copyWith(selecting: true, selectedIds: Set.unmodifiable(selected)));
   }
 
   void selectVisible(Iterable<String> ids) {
-    update(
-      state.copyWith(
-        selecting: true,
-        selectedIds: Set.unmodifiable(ids.toSet()),
-      ),
-    );
+    update(state.copyWith(selecting: true, selectedIds: Set.unmodifiable(ids.toSet())));
   }
 
   void finishSelection() {
-    update(
-      state.copyWith(
-        selecting: false,
-        selectedIds: const <String>{},
-      ),
-    );
+    update(state.copyWith(selecting: false, selectedIds: const <String>{}));
   }
 }

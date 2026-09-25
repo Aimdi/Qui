@@ -30,23 +30,12 @@ class SavedTweetModel extends Store<List<SavedTweet>> {
     final database = await Repository.writable();
     final batch = database.batch();
     for (final id in selected) {
-      batch.update(
-        tableSavedTweet,
-        {'folder_id': folderId},
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      batch.update(tableSavedTweet, {'folder_id': folderId}, where: 'id = ?', whereArgs: [id]);
     }
     await batch.commit(noResult: true);
 
     update(
-      state
-          .map(
-            (entry) => selected.contains(entry.id)
-                ? entry.copyWith(folderId: folderId)
-                : entry,
-          )
-          .toList(),
+      state.map((entry) => selected.contains(entry.id) ? entry.copyWith(folderId: folderId) : entry).toList(),
       force: true,
     );
   }
@@ -79,9 +68,10 @@ class SavedTweetModel extends Store<List<SavedTweet>> {
     await execute(() async {
       var database = await Repository.readOnly();
 
-      return (await database.query(tableSavedTweet, orderBy: 'saved_at DESC'))
-          .map((e) => SavedTweet.fromMap(e))
-          .toList();
+      return (await database.query(
+        tableSavedTweet,
+        orderBy: 'saved_at DESC',
+      )).map((e) => SavedTweet.fromMap(e)).toList();
     });
   }
 
@@ -92,9 +82,10 @@ class SavedTweetModel extends Store<List<SavedTweet>> {
 
     var database = await Repository.readOnly();
 
-    var tweets = (await database.query(tableSavedTweet, orderBy: 'saved_at DESC'))
-        .map((e) => SavedTweet.fromMap(e))
-        .toList();
+    var tweets = (await database.query(
+      tableSavedTweet,
+      orderBy: 'saved_at DESC',
+    )).map((e) => SavedTweet.fromMap(e)).toList();
 
     update(tweets, force: true);
   }
@@ -107,8 +98,12 @@ class SavedTweetModel extends Store<List<SavedTweet>> {
 
       var encodedContent = jsonEncode(content);
 
-      await database.insert(
-          tableSavedTweet, {'id': id, 'user_id': user, 'content': encodedContent, 'folder_id': folderId});
+      await database.insert(tableSavedTweet, {
+        'id': id,
+        'user_id': user,
+        'content': encodedContent,
+        'folder_id': folderId,
+      });
       state.add(SavedTweet(id: id, user: user, content: encodedContent, folderId: folderId));
 
       return state;

@@ -40,36 +40,23 @@ final List<FeedTabOption> feedTabs = [
 /// empty screen would be worse than no entry, and the choice is stored by name
 /// so turning the plugin off simply stops offering it.
 List<FeedTabOption> availableFeedTabs(BasePrefService prefs) => feedTabs
-    .where(
-      (e) =>
-          e.id != FeedTab.reddit ||
-          prefs.get<bool>(optionPluginRedditEnabled) == true,
-    )
+    .where((e) => e.id != FeedTab.reddit || prefs.get<bool>(optionPluginRedditEnabled) == true)
     .toList(growable: false);
 
-FeedTab feedTabFromId(String? id) => FeedTab.values.firstWhere(
-      (e) => e.name == id,
-      orElse: () => FeedTab.following,
-    );
+FeedTab feedTabFromId(String? id) => FeedTab.values.firstWhere((e) => e.name == id, orElse: () => FeedTab.following);
 
 class FeedScreen extends StatefulWidget {
   final ScrollController scrollController;
   final String id;
   final String name;
 
-  const FeedScreen({
-    super.key,
-    required this.scrollController,
-    required this.id,
-    required this.name,
-  });
+  const FeedScreen({super.key, required this.scrollController, required this.id, required this.name});
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
 }
 
-class _FeedScreenState extends State<FeedScreen>
-    with AutomaticKeepAliveClientMixin<FeedScreen> {
+class _FeedScreenState extends State<FeedScreen> with AutomaticKeepAliveClientMixin<FeedScreen> {
   final TweetFeedController _feedController = TweetFeedController();
   FeedTab? _tab;
   bool _followingMediaOnly = false;
@@ -90,8 +77,7 @@ class _FeedScreenState extends State<FeedScreen>
 
     final BasePrefService prefs = PrefService.of(context);
     final available = availableFeedTabs(prefs);
-    var tab =
-        _tab ??= feedTabFromId(prefs.get<String>(optionHomeDefaultFeedTab));
+    var tab = _tab ??= feedTabFromId(prefs.get<String>(optionHomeDefaultFeedTab));
 
     // The plugin can be turned off while its feed is the one being shown.
     if (!available.any((e) => e.id == tab)) {
@@ -103,11 +89,7 @@ class _FeedScreenState extends State<FeedScreen>
 
     final sourceOptions = [
       for (final option in available)
-        HomeSourceOption<FeedTab>(
-          value: option.id,
-          label: option.titleBuilder(context),
-          icon: feedTabIcon(option.id),
-        ),
+        HomeSourceOption<FeedTab>(value: option.id, label: option.titleBuilder(context), icon: feedTabIcon(option.id)),
     ];
 
     return GroupFeedShell(
@@ -129,19 +111,9 @@ class _FeedScreenState extends State<FeedScreen>
       },
       bodyBuilder: (context) {
         final body = switch (tab) {
-          FeedTab.following => SubscriptionGroupScreenContent(
-              id: widget.id,
-              mediaOnly: _followingMediaOnly,
-            ),
-          FeedTab.reddit => RedditFeedList(
-              scrollController: widget.scrollController,
-            ),
-          FeedTab.foryou => ForYouTweets(
-              _feedController,
-              type: 'profile',
-              includeReplies: false,
-              pref: prefs,
-            ),
+          FeedTab.following => SubscriptionGroupScreenContent(id: widget.id, mediaOnly: _followingMediaOnly),
+          FeedTab.reddit => RedditFeedList(scrollController: widget.scrollController),
+          FeedTab.foryou => ForYouTweets(_feedController, type: 'profile', includeReplies: false, pref: prefs),
         };
 
         return Column(
@@ -149,9 +121,7 @@ class _FeedScreenState extends State<FeedScreen>
             if (tab == FeedTab.following)
               HomeReadingControls(
                 mediaOnly: _followingMediaOnly,
-                onMediaToggle: () => setState(
-                  () => _followingMediaOnly = !_followingMediaOnly,
-                ),
+                onMediaToggle: () => setState(() => _followingMediaOnly = !_followingMediaOnly),
               ),
             Expanded(child: body),
           ],

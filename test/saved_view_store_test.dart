@@ -4,14 +4,8 @@ import 'package:qui/saved/saved_view_store.dart';
 void main() {
   group('Saved library view state', () {
     test('sorts newest order in reverse for oldest', () {
-      expect(
-        applySavedSort([3, 2, 1], SavedSort.newest),
-        [3, 2, 1],
-      );
-      expect(
-        applySavedSort([3, 2, 1], SavedSort.oldest),
-        [1, 2, 3],
-      );
+      expect(applySavedSort([3, 2, 1], SavedSort.newest), [3, 2, 1]);
+      expect(applySavedSort([3, 2, 1], SavedSort.oldest), [1, 2, 3]);
     });
 
     test('selection can start, toggle, select visible and finish', () {

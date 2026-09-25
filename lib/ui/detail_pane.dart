@@ -53,11 +53,8 @@ class DetailPaneController extends ChangeNotifier {
 /// or a pushed full-screen route) is how [openStatus] decides to fall back to
 /// normal route navigation.
 class DetailPaneScope extends InheritedNotifier<DetailPaneController> {
-  const DetailPaneScope({
-    super.key,
-    required DetailPaneController controller,
-    required super.child,
-  }) : super(notifier: controller);
+  const DetailPaneScope({super.key, required DetailPaneController controller, required super.child})
+    : super(notifier: controller);
 
   /// Subscribes the caller to changes (use from `build`).
   static DetailPaneController? maybeOf(BuildContext context) =>

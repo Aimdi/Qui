@@ -31,11 +31,7 @@ SnackBar workingSnackBar(String message) => SnackBar(
   duration: const Duration(minutes: 2),
   content: Row(
     children: [
-      const SizedBox(
-        width: 16,
-        height: 16,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ),
+      const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
       const SizedBox(width: 12),
       Flexible(child: Text(message, style: const TextStyle(height: 1.5))),
     ],
@@ -48,12 +44,7 @@ void showWorkingSnackBar(BuildContext context, String message) {
     ..showSnackBar(workingSnackBar(message));
 }
 
-void showSnackBar(
-  BuildContext context, {
-  required String icon,
-  required String message,
-  bool clearBefore = true,
-}) {
+void showSnackBar(BuildContext context, {required String icon, required String message, bool clearBefore = true}) {
   if (clearBefore) {
     ScaffoldMessenger.of(context).clearSnackBars();
   }
@@ -123,11 +114,7 @@ EmojiErrorWidget createEmojiError(TwitterError error) {
       break;
   }
 
-  return EmojiErrorWidget(
-    emoji: emoji,
-    message: message,
-    errorMessage: error.message,
-  );
+  return EmojiErrorWidget(emoji: emoji, message: message, errorMessage: error.message);
 }
 
 class EmojiErrorWidget extends FritterErrorWidget {
@@ -161,11 +148,7 @@ class EmojiErrorWidget extends FritterErrorWidget {
             margin: const EdgeInsets.only(bottom: 16),
             child: Text(emoji, style: const TextStyle(fontSize: 36)),
           ),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 18),
-          ),
+          Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
           Container(
             margin: const EdgeInsets.only(top: 12),
             child: Text(
@@ -251,11 +234,7 @@ class ActionableErrorWidget extends FritterErrorWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(margin: const EdgeInsets.only(bottom: 16), child: glyph),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 18),
-          ),
+          Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
           Container(
             margin: const EdgeInsets.only(top: 12),
             child: Text(
@@ -266,12 +245,7 @@ class ActionableErrorWidget extends FritterErrorWidget {
           ),
           Container(
             margin: const EdgeInsets.only(top: 12),
-            child: Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 12,
-              runSpacing: 12,
-              children: actions,
-            ),
+            child: Wrap(alignment: WrapAlignment.center, spacing: 12, runSpacing: 12, children: actions),
           ),
         ],
       ),
@@ -287,11 +261,7 @@ Widget addAccountButton(BuildContext context) => ElevatedButton.icon(
   // through the cookie-paste screen instead.
   onPressed: () => Navigator.push(
     context,
-    MaterialPageRoute(
-      builder: (_) => isDesktop
-          ? const DesktopCookieLoginScreen()
-          : const TwitterLoginWebview(),
-    ),
+    MaterialPageRoute(builder: (_) => isDesktop ? const DesktopCookieLoginScreen() : const TwitterLoginWebview()),
   ),
 );
 
@@ -309,11 +279,7 @@ class NoAccountErrorWidget extends FritterErrorWidget {
       details: L10n.of(context).no_account_available_message,
       actions: [
         addAccountButton(context),
-        if (onRetry != null)
-          TextButton(
-            child: Text(L10n.of(context).retry),
-            onPressed: () => onRetry!(),
-          ),
+        if (onRetry != null) TextButton(child: Text(L10n.of(context).retry), onPressed: () => onRetry!()),
       ],
     );
   }
@@ -333,11 +299,7 @@ class RateLimitErrorWidget extends FritterErrorWidget {
       details: L10n.of(context).rate_limited_message,
       actions: [
         addAccountButton(context),
-        if (onRetry != null)
-          TextButton(
-            child: Text(L10n.of(context).retry),
-            onPressed: () => onRetry!(),
-          ),
+        if (onRetry != null) TextButton(child: Text(L10n.of(context).retry), onPressed: () => onRetry!()),
       ],
     );
   }
@@ -357,11 +319,7 @@ class NoWorkingAccountErrorWidget extends FritterErrorWidget {
       details: L10n.of(context).no_working_account_message,
       actions: [
         addAccountButton(context),
-        if (onRetry != null)
-          TextButton(
-            child: Text(L10n.of(context).retry),
-            onPressed: () => onRetry!(),
-          ),
+        if (onRetry != null) TextButton(child: Text(L10n.of(context).retry), onPressed: () => onRetry!()),
       ],
     );
   }
@@ -383,13 +341,7 @@ class EndpointRefusedErrorWidget extends FritterErrorWidget {
       icon: Icons.cloud_off_outlined,
       title: L10n.of(context).endpoint_refused_title,
       details: L10n.of(context).endpoint_refused_message,
-      actions: [
-        if (onRetry != null)
-          TextButton(
-            child: Text(L10n.of(context).retry),
-            onPressed: () => onRetry!(),
-          ),
-      ],
+      actions: [if (onRetry != null) TextButton(child: Text(L10n.of(context).retry), onPressed: () => onRetry!())],
     );
   }
 }
@@ -408,12 +360,7 @@ class InlineErrorWidget extends FritterErrorWidget {
         children: [
           Container(
             margin: const EdgeInsets.only(right: 8),
-            child: Icon(
-              Icons.error_outline,
-              color: Colors.red.harmonizeWith(
-                Theme.of(context).colorScheme.primary,
-              ),
-            ),
+            child: Icon(Icons.error_outline, color: Colors.red.harmonizeWith(Theme.of(context).colorScheme.primary)),
           ),
           Text(
             '$error',
@@ -431,21 +378,12 @@ class AlertErrorWidget extends FritterErrorWidget {
   final StackTrace? stackTrace;
   final String prefix;
 
-  const AlertErrorWidget({
-    super.key,
-    required this.error,
-    required this.stackTrace,
-    required this.prefix,
-  });
+  const AlertErrorWidget({super.key, required this.error, required this.stackTrace, required this.prefix});
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      content: FullPageErrorWidget(
-        error: error,
-        prefix: prefix,
-        stackTrace: stackTrace,
-      ),
+      content: FullPageErrorWidget(error: error, prefix: prefix, stackTrace: stackTrace),
     );
   }
 }
@@ -506,9 +444,7 @@ class FullPageErrorWidget extends FritterErrorWidget {
       return EmojiErrorWidget(
         emoji: '🔌',
         message: L10n.of(context).could_not_contact_twitter,
-        errorMessage: L10n.of(
-          context,
-        ).please_check_your_internet_connection_error_message(error.message),
+        errorMessage: L10n.of(context).please_check_your_internet_connection_error_message(error.message),
         onRetry: onRetry,
       );
     }
@@ -536,16 +472,9 @@ class FullPageErrorWidget extends FritterErrorWidget {
         title: L10n.of(context).reader_transaction_unavailable,
         details: L10n.of(context).reader_transaction_unavailable_hint,
         actions: [
-          if (onRetry != null)
-            TextButton(
-              onPressed: () => onRetry(),
-              child: Text(L10n.of(context).retry),
-            ),
+          if (onRetry != null) TextButton(onPressed: () => onRetry(), child: Text(L10n.of(context).retry)),
           TextButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const DiagnosticsScreen()),
-            ),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DiagnosticsScreen())),
             icon: const Icon(Icons.info_outline),
             label: Text(L10n.of(context).diagnostics),
           ),
@@ -561,9 +490,7 @@ class FullPageErrorWidget extends FritterErrorWidget {
       return EmojiErrorWidget(
         emoji: '⏱️',
         message: L10n.of(context).timed_out,
-        errorMessage: L10n.of(
-          context,
-        ).this_took_too_long_to_load_please_check_your_network_connection,
+        errorMessage: L10n.of(context).this_took_too_long_to_load_please_check_your_network_connection,
         onRetry: onRetry,
       );
     }
@@ -590,13 +517,7 @@ class FullPageErrorWidget extends FritterErrorWidget {
             icon: Icons.cloud_off_outlined,
             title: L10n.of(context).reader_service_unavailable,
             details: L10n.of(context).reader_service_unavailable_hint,
-            actions: [
-              if (onRetry != null)
-                TextButton(
-                  onPressed: () => onRetry(),
-                  child: Text(L10n.of(context).retry),
-                ),
-            ],
+            actions: [if (onRetry != null) TextButton(onPressed: () => onRetry(), child: Text(L10n.of(context).retry))],
           );
         case ReadFailureKind.unavailable:
           return ActionableErrorWidget(
@@ -604,13 +525,7 @@ class FullPageErrorWidget extends FritterErrorWidget {
             icon: Icons.block_outlined,
             title: L10n.of(context).reader_request_unavailable,
             details: L10n.of(context).reader_request_unavailable_hint,
-            actions: [
-              if (onRetry != null)
-                TextButton(
-                  onPressed: () => onRetry(),
-                  child: Text(L10n.of(context).retry),
-                ),
-            ],
+            actions: [if (onRetry != null) TextButton(onPressed: () => onRetry(), child: Text(L10n.of(context).retry))],
           );
         case ReadFailureKind.connection:
         case ReadFailureKind.timedOut:
@@ -622,13 +537,7 @@ class FullPageErrorWidget extends FritterErrorWidget {
             icon: Icons.public_off_outlined,
             title: L10n.of(context).oops_something_went_wrong,
             details: L10n.of(context).reader_http_error(error.statusCode),
-            actions: [
-              if (onRetry != null)
-                TextButton(
-                  onPressed: () => onRetry(),
-                  child: Text(L10n.of(context).retry),
-                ),
-            ],
+            actions: [if (onRetry != null) TextButton(onPressed: () => onRetry(), child: Text(L10n.of(context).retry))],
           );
       }
     }
@@ -646,9 +555,7 @@ class FullPageErrorWidget extends FritterErrorWidget {
               margin: const EdgeInsets.only(bottom: 16),
               child: Icon(
                 Icons.error_outline,
-                color: Colors.red.harmonizeWith(
-                  Theme.of(context).colorScheme.primary,
-                ),
+                color: Colors.red.harmonizeWith(Theme.of(context).colorScheme.primary),
                 size: 36,
               ),
             ),
@@ -687,10 +594,7 @@ class FullPageErrorWidget extends FritterErrorWidget {
             if (onRetry != null)
               Container(
                 margin: const EdgeInsets.only(top: 12),
-                child: ElevatedButton(
-                  child: Text(retryText ?? L10n.current.retry),
-                  onPressed: () => onRetry(),
-                ),
+                child: ElevatedButton(child: Text(retryText ?? L10n.current.retry), onPressed: () => onRetry()),
               ),
           ],
         ),

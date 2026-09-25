@@ -55,9 +55,7 @@ class NoWorkingAccountException with SyntheticException implements Exception {
 /// This is deliberately distinct from an endpoint/query-id refusal: both can
 /// produce similar failures at X, but repairing them requires different
 /// machinery.
-class TransactionIdUnavailableException
-    with SyntheticException
-    implements Exception {
+class TransactionIdUnavailableException with SyntheticException implements Exception {
   final Object cause;
 
   TransactionIdUnavailableException(this.cause);
