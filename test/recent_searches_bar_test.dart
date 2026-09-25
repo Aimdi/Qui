@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qui/generated/l10n.dart';
 import 'package:qui/search/recent_searches_bar.dart';
 import 'package:qui/search/search_history.dart';
 import 'package:qui/utils/local_json_store.dart';
@@ -34,11 +36,15 @@ void main() {
     String? selected;
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: const [
+          L10n.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: L10n.delegate.supportedLocales,
         home: Scaffold(
-          body: RecentSearchesBar(
-            store: history,
-            onSelected: (query) => selected = query,
-          ),
+          body: RecentSearchesBar(store: history, onSelected: (query) => selected = query),
         ),
       ),
     );
