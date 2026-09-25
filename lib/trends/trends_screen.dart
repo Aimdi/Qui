@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:qui/constants.dart';
+import 'package:qui/generated/l10n.dart';
+import 'package:qui/search/recent_searches_bar.dart';
 import 'package:qui/search/search.dart';
+import 'package:qui/search/search_history.dart';
 import 'package:qui/trends/_list.dart';
 import 'package:qui/trends/_settings.dart';
 import 'package:qui/trends/_tabs.dart';
@@ -12,21 +15,47 @@ class TrendsScreen extends StatefulWidget {
   final ScrollController scrollController;
   final FocusNode focusNode;
 
-  const TrendsScreen({
-    super.key,
-    required this.scrollController,
-    required this.focusNode,
-  });
+  const TrendsScreen({super.key, required this.scrollController, required this.focusNode});
 
   @override
   State<TrendsScreen> createState() => _TrendsScreenState();
 }
 
-class _TrendsScreenState extends State<TrendsScreen>
-    with AutomaticKeepAliveClientMixin<TrendsScreen> {
+class _TrendsScreenState extends State<TrendsScreen> with AutomaticKeepAliveClientMixin<TrendsScreen> {
   @override
   bool get wantKeepAlive => true;
   final TextEditingController _queryController = TextEditingController();
+  final SearchHistory _history = SearchHistory()..load();
+
+  Future<void> _submit(String rawQuery) async {
+    final query = rawQuery.trim();
+    if (query.isEmpty) {
+      widget.focusNode.requestFocus();
+      return;
+    }
+
+    _queryController.text = query;
+    await _history.remember(query);
+    if (!mounted) return;
+
+    await Navigator.pushNamed(
+      context,
+      routeSearch,
+      arguments: SearchArguments(0, focusInputOnOpen: false, query: query),
+    );
+  }
+
+  void _clearQuery() {
+    _queryController.clear();
+    widget.focusNode.requestFocus();
+  }
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    _history.destroy();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,34 +74,41 @@ class _TrendsScreenState extends State<TrendsScreen>
           child: SearchBar(
             controller: _queryController,
             focusNode: widget.focusNode,
+            hintText: L10n.of(context).search,
             textInputAction: TextInputAction.search,
             leading: IconButton(
               icon: const Icon(Icons.search),
-              onPressed: () => {},
+              tooltip: L10n.of(context).search,
+              onPressed: () => _submit(_queryController.text),
             ),
-            onSubmitted: (query) {
-              Navigator.pushNamed(
-                context,
-                routeSearch,
-                arguments: SearchArguments(
-                  0,
-                  focusInputOnOpen: false,
-                  query: query,
-                ),
-              );
-            },
+            trailing: [
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _queryController,
+                builder: (context, value, _) => value.text.isEmpty
+                    ? const SizedBox.shrink()
+                    : IconButton(
+                        key: const ValueKey('discover-search-clear'),
+                        tooltip: L10n.of(context).reader_clear_search,
+                        onPressed: _clearQuery,
+                        icon: const Icon(Icons.close),
+                      ),
+              ),
+            ],
+            onSubmitted: _submit,
           ),
         ),
         bottom: TrendsTabBar(),
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
-        onPressed: () async => showAdaptiveSheet(
-          context: context,
-          builder: (context) => const TrendsSettings(),
-        ),
+        onPressed: () async => showAdaptiveSheet(context: context, builder: (context) => const TrendsSettings()),
       ),
-      body: TrendsList(scrollController: widget.scrollController),
+      body: Column(
+        children: [
+          RecentSearchesBar(store: _history, onSelected: _submit),
+          Expanded(child: TrendsList(scrollController: widget.scrollController)),
+        ],
+      ),
     );
   }
 }

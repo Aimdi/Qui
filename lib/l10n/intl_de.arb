@@ -1240,5 +1240,81 @@
   "zen_mode_page_cap": "Feed-Länge im Zen-Modus",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "Wie viele Seiten ein Feed im Zen-Modus lädt, bevor er pausiert.",
-  "@zen_mode_page_cap_description": {}
+  "@zen_mode_page_cap_description": {},
+  "reader_search_loaded": "Geladene Beiträge durchsuchen",
+  "@reader_search_loaded": {},
+  "reader_search_loaded_hint": "Text, Autoren und Links in bereits geladenen X-Beiträgen durchsuchen. Funktioniert auch offline.",
+  "@reader_search_loaded_hint": {},
+  "reader_recent_searches": "Letzte Suchen",
+  "@reader_recent_searches": {},
+  "reader_clear_searches": "Verlauf löschen",
+  "@reader_clear_searches": {},
+  "reader_clear_search": "Suche leeren",
+  "@reader_clear_search": {},
+  "reader_search_hint": "X-Beiträge, Links oder Personen suchen. Abgesendete Suchen werden auf diesem Gerät gespeichert.",
+  "@reader_search_hint": {},
+  "reader_search_top": "Top",
+  "@reader_search_top": {},
+  "reader_search_latest": "Neueste",
+  "@reader_search_latest": {},
+  "reader_search_people": "Personen",
+  "@reader_search_people": {},
+  "reader_open_plugin": "Öffnen",
+  "@reader_open_plugin": {},
+  "reader_open_post": "Beitrag öffnen",
+  "@reader_open_post": {},
+  "reader_saved_unreadable": "Diese lokale Kopie konnte nicht gelesen werden. Öffne den Originalbeitrag, um es erneut zu versuchen.",
+  "@reader_saved_unreadable": {},
+  "reader_cached_profile": "Gespeichertes Profil wird angezeigt.",
+  "@reader_cached_profile": {},
+  "reader_refresh_failed": "Aktualisierung fehlgeschlagen. Gespeicherte Inhalte sind weiterhin verfügbar.",
+  "@reader_refresh_failed": {},
+  "reader_request_unavailable": "Diese Anfrage ist nicht verfügbar",
+  "@reader_request_unavailable": {},
+  "reader_request_unavailable_hint": "X hat diese Anfrage abgewiesen. Sie ist möglicherweise vorübergehend nicht verfügbar oder dieser Teil des Dienstes hat sich geändert.",
+  "@reader_request_unavailable_hint": {},
+  "reader_service_unavailable": "X ist vorübergehend nicht verfügbar",
+  "@reader_service_unavailable": {},
+  "reader_service_unavailable_hint": "X hat einen Serverfehler zurückgegeben. Du kannst zwischengespeicherte Beiträge weiterlesen und es später erneut versuchen.",
+  "@reader_service_unavailable_hint": {},
+  "reader_http_error": "X hat HTTP {code} zurückgegeben.",
+  "@reader_http_error": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "reader_transaction_unavailable": "X-Anfragesignierung ist nicht verfügbar",
+  "@reader_transaction_unavailable": {},
+  "reader_transaction_unavailable_hint": "Qui konnte das Transaktions-Token, das X derzeit verlangt, nicht ableiten. Deine Konten können weiterhin in Ordnung sein; versuche es gleich noch einmal oder prüfe die Diagnose.",
+  "@reader_transaction_unavailable_hint": {},
+  "library_sort_newest": "Neueste zuerst",
+  "@library_sort_newest": {},
+  "library_sort_oldest": "Älteste zuerst",
+  "@library_sort_oldest": {},
+  "library_selected_count": "{count} ausgewählt",
+  "@library_selected_count": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "library_select_all": "Alle auswählen",
+  "@library_select_all": {},
+  "library_clear_selection": "Auswahl aufheben",
+  "@library_clear_selection": {},
+  "library_move_selected": "Ausgewählte verschieben",
+  "@library_move_selected": {},
+  "library_delete_selected_title": "Ausgewählte Beiträge löschen?",
+  "@library_delete_selected_title": {},
+  "library_delete_selected_description": "{count} ausgewählte gespeicherte Beiträge löschen? Dies kann nicht rückgängig gemacht werden.",
+  "@library_delete_selected_description": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Qui
+GenericName=X Reader
+Comment=Desktop reader for X
+Exec=qui
+TryExec=qui
+Icon=com.aimdi.qui
+Terminal=false
+Categories=Network;News;
+StartupNotify=true
+StartupWMClass=com.aimdi.qui

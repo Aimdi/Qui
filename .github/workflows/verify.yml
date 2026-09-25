@@ -54,26 +54,21 @@ jobs:
           dart run intl_utils:generate
           dart run flutter_iconpicker:generate_packs --packs material
 
-      # Only files the PR *adds*. Dart 3.7's tall style would rewrite 195 of the
-      # 250 existing files, and this fork regularly ports patches from upstream
-      # QuaX and Squawker — a mass reformat would turn every future port into a
-      # conflict. New code is still born formatted.
-      - name: Check formatting of new files
-        if: github.event_name == 'pull_request'
+      # Reuse the exact SDK installed above; FVM still checks .fvmrc for every
+      # invocation in the shared local/CI verification script.
+      - name: Configure FVM for the pinned SDK
+        run: |
+          export PATH="$HOME/.pub-cache/bin:$PATH"
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+          dart pub global activate fvm 4.3.1
+          fvm config --cache-path "$RUNNER_TEMP/qui-fvm"
+          version=$(python3 -c 'import json; print(json.load(open(".fvmrc"))["flutter"])')
+          mkdir -p "$RUNNER_TEMP/qui-fvm/versions"
+          ln -s "$FLUTTER_ROOT" "$RUNNER_TEMP/qui-fvm/versions/$version"
+
+      - name: Verify
         run: |
           git fetch --no-tags --depth=1 origin "$BASE"
-          mapfile -t added < <(git diff --diff-filter=A --name-only "origin/$BASE"...HEAD -- '*.dart')
-          if [ ${#added[@]} -eq 0 ]; then
-            echo "No new Dart files."
-            exit 0
-          fi
-          printf '%s\n' "${added[@]}"
-          dart format --output=none --set-exit-if-changed --line-length 120 "${added[@]}"
+          VERIFY_BASE_REF="origin/$BASE" bash scripts/verify.sh
         env:
-          BASE: ${{ github.base_ref }}
-
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos
-
-      - name: Test
-        run: flutter test --reporter expanded
+          BASE: ${{ github.base_ref || github.event.repository.default_branch }}

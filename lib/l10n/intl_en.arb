@@ -1240,5 +1240,81 @@
   "zen_mode_page_cap": "Zen feed length",
   "@zen_mode_page_cap": {},
   "zen_mode_page_cap_description": "How many pages a feed loads in zen mode before pausing.",
-  "@zen_mode_page_cap_description": {}
+  "@zen_mode_page_cap_description": {},
+  "reader_search_loaded": "Search loaded posts",
+  "@reader_search_loaded": {},
+  "reader_search_loaded_hint": "Search the text, authors and links in X posts already loaded in this feed. Works offline.",
+  "@reader_search_loaded_hint": {},
+  "reader_recent_searches": "Recent searches",
+  "@reader_recent_searches": {},
+  "reader_clear_searches": "Clear history",
+  "@reader_clear_searches": {},
+  "reader_clear_search": "Clear search",
+  "@reader_clear_search": {},
+  "reader_search_hint": "Search X posts, links or people. Submitted searches are saved on this device.",
+  "@reader_search_hint": {},
+  "reader_search_top": "Top",
+  "@reader_search_top": {},
+  "reader_search_latest": "Latest",
+  "@reader_search_latest": {},
+  "reader_search_people": "People",
+  "@reader_search_people": {},
+  "reader_open_plugin": "Open",
+  "@reader_open_plugin": {},
+  "reader_open_post": "Open post",
+  "@reader_open_post": {},
+  "reader_saved_unreadable": "This local copy could not be read. Open the original post to try again.",
+  "@reader_saved_unreadable": {},
+  "reader_cached_profile": "Showing a saved profile.",
+  "@reader_cached_profile": {},
+  "reader_refresh_failed": "Could not refresh. Your saved content is still available.",
+  "@reader_refresh_failed": {},
+  "reader_request_unavailable": "This request is unavailable",
+  "@reader_request_unavailable": {},
+  "reader_request_unavailable_hint": "X rejected this request. It may be temporarily unavailable or this part of the service may have changed.",
+  "@reader_request_unavailable_hint": {},
+  "reader_service_unavailable": "X is temporarily unavailable",
+  "@reader_service_unavailable": {},
+  "reader_service_unavailable_hint": "X returned a server error. You can keep reading cached posts and retry later.",
+  "@reader_service_unavailable_hint": {},
+  "reader_http_error": "X returned HTTP {code}.",
+  "@reader_http_error": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "reader_transaction_unavailable": "X request signing is unavailable",
+  "@reader_transaction_unavailable": {},
+  "reader_transaction_unavailable_hint": "Qui could not derive the transaction token X currently requires. Your accounts may still be fine; retry shortly or check Diagnostics.",
+  "@reader_transaction_unavailable_hint": {},
+  "library_sort_newest": "Newest first",
+  "@library_sort_newest": {},
+  "library_sort_oldest": "Oldest first",
+  "@library_sort_oldest": {},
+  "library_selected_count": "{count} selected",
+  "@library_selected_count": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "library_select_all": "Select all",
+  "@library_select_all": {},
+  "library_clear_selection": "Clear selection",
+  "@library_clear_selection": {},
+  "library_move_selected": "Move selected",
+  "@library_move_selected": {},
+  "library_delete_selected_title": "Delete selected posts?",
+  "@library_delete_selected_title": {},
+  "library_delete_selected_description": "Delete {count} selected saved posts? This cannot be undone.",
+  "@library_delete_selected_description": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

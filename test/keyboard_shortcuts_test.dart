@@ -4,9 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qui/ui/keyboard_shortcuts.dart';
 
 void main() {
-  testWidgets('slash opens search unless a text field is focused', (
-    tester,
-  ) async {
+  testWidgets('slash opens search unless a text field is focused', (tester) async {
     var searches = 0;
     await tester.pumpWidget(
       MaterialApp(
@@ -14,6 +12,8 @@ void main() {
           onSearch: () => searches++,
           onSettings: () {},
           onClosePane: () {},
+          onBackPane: () {},
+          onForwardPane: () {},
           onScrollNext: () {},
           onScrollPrevious: () {},
           onSelectTab: (_) {},
@@ -35,6 +35,8 @@ void main() {
           onSearch: () => searches++,
           onSettings: () {},
           onClosePane: () {},
+          onBackPane: () {},
+          onForwardPane: () {},
           onScrollNext: () {},
           onScrollPrevious: () {},
           onSelectTab: (_) {},
@@ -58,6 +60,8 @@ void main() {
           onSearch: () {},
           onSettings: () {},
           onClosePane: () => closed++,
+          onBackPane: () {},
+          onForwardPane: () {},
           onScrollNext: () {},
           onScrollPrevious: () {},
           onSelectTab: (_) {},
@@ -71,6 +75,38 @@ void main() {
     expect(closed, 1);
   });
 
+  testWidgets('Alt+Left and Alt+Right navigate reading history', (tester) async {
+    var back = 0;
+    var forward = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DesktopKeyboardShortcuts(
+          onSearch: () {},
+          onSettings: () {},
+          onClosePane: () {},
+          onBackPane: () => back++,
+          onForwardPane: () => forward++,
+          onScrollNext: () {},
+          onScrollPrevious: () {},
+          onSelectTab: (_) {},
+          child: const Scaffold(body: SizedBox.expand()),
+        ),
+      ),
+    );
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await tester.pump();
+    expect(back, 1);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await tester.pump();
+    expect(forward, 1);
+  });
+
   testWidgets('digit keys select rail tabs', (tester) async {
     var tab = -1;
     await tester.pumpWidget(
@@ -79,6 +115,8 @@ void main() {
           onSearch: () {},
           onSettings: () {},
           onClosePane: () {},
+          onBackPane: () {},
+          onForwardPane: () {},
           onScrollNext: () {},
           onScrollPrevious: () {},
           onSelectTab: (index) => tab = index,
@@ -102,16 +140,15 @@ void main() {
           onSearch: () {},
           onSettings: () {},
           onClosePane: () {},
+          onBackPane: () {},
+          onForwardPane: () {},
           onScrollNext: () => scrollFeedByStep(controller, direction: 1),
           onScrollPrevious: () => scrollFeedByStep(controller, direction: -1),
           onSelectTab: (_) {},
           child: Scaffold(
             body: ListView(
               controller: controller,
-              children: List.generate(
-                40,
-                (i) => SizedBox(height: 100, child: Text('item $i')),
-              ),
+              children: List.generate(40, (i) => SizedBox(height: 100, child: Text('item $i'))),
             ),
           ),
         ),

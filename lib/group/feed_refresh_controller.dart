@@ -5,16 +5,24 @@
 /// same callback. This keeps both refresh entry points on a single code path.
 class FeedRefreshController {
   Future<void> Function()? _handler;
+  Future<void> Function()? _search;
 
   void register(Future<void> Function() handler) {
     _handler = handler;
   }
 
   void unregister(Future<void> Function() handler) {
-    if (identical(_handler, handler)) {
+    if (_handler == handler) {
       _handler = null;
     }
   }
+
+  void registerSearch(Future<void> Function() handler) => _search = handler;
+  void unregisterSearch(Future<void> Function() handler) {
+    if (_search == handler) _search = null;
+  }
+
+  Future<void> searchLoaded() async => _search?.call();
 
   Future<void> refresh() async {
     await _handler?.call();
